@@ -54,15 +54,16 @@ BUTTON_STYLE = (
         color: white;
         background-color: %s;
     }""" % (
-    DETAILING_H,
-    DETAILING_H,
-    DETAILING_H,
-    PRIMARY_H
-    ))
+        DETAILING_H,
+        DETAILING_H,
+        DETAILING_H,
+        PRIMARY_H
+    )
+)
 
 HEADER_STYLE = "color: white; font-family: consolas; font-size: 10px"
 
-LAUNCH_MODE = ("LOADING", "FUEL OUT", "IGNITION", "TAKEOFF", "IN FLIGHT")
+LAUNCH_MODE = ("LOADING", "FUEL OUT", "IGNITION", "TAKEOFF", "FLIGHT")
 STATIC_F_MODE = ("LOADING", "FUEL OUT", "IGNITION")
 
 class DarkCyanPalette(QPalette):
@@ -93,6 +94,7 @@ class RocketDisplayWindow(QMainWindow):
     """Main Rocket Control Window."""
 
     def __init__(self) -> None:
+        """Constructs new Rocket Display Window."""
         super().__init__()
 
         # control aspects
@@ -104,7 +106,7 @@ class RocketDisplayWindow(QMainWindow):
 
         # display
         self.setWindowTitle("LR Mission Control")
-        self.setStyleSheet("background-color: #171817;")
+        #self.setStyleSheet(f"background-color: {PRIMARY_H};")
         self.setMinimumSize(MIN_SIZE * 2, MIN_SIZE)
         self.setWindowIcon(QIcon(ICON_PATH))
 
@@ -116,11 +118,22 @@ class RocketDisplayWindow(QMainWindow):
         self.pal = DarkCyanPalette()
         self.setPalette(self.pal)
 
-        self._createFrame()
+        # initialize UI
+        self.generalLayout.addLayout(self._createMainGrid())
         self._linkButtons()
 
 
     def _createLabelBox(self, labelType: str | None=None, message: str | None = None, style: str | None = None) -> QLabel:
+        """Creates frame box with optional label message.
+        
+        Args:
+            labelType(str): labelType to map label to dict of labels.
+            message(str): the label message itself.
+            style(str): style sheet configurations.
+        
+        Returns:
+            QLabel: the generated frame box with optional message.
+        """
         label = QLabel()
         if labelType:
             pos = QGridLayout(label)
@@ -134,6 +147,18 @@ class RocketDisplayWindow(QMainWindow):
         return label
 
     def _createLayoutBox(self, widgets: list) -> QLabel:
+        """Creates a frame box with layout of widgets.
+
+        Args:
+            widgets(list): list of widgets to place in layout,
+            plus grid location.
+        
+        Returns:
+            QLabel: the generated frame box with given widgets.
+
+        Argument format example:
+        [(button, x, y), (button, x, y), (someWidget, x, y)]
+        """
         label = QLabel()
         pos = QGridLayout(label)
         for widget in widgets:
@@ -143,8 +168,13 @@ class RocketDisplayWindow(QMainWindow):
         label.setLineWidth(1)
         return label
     
-    def _createGrid(self, parent: QWidget | None = None):
-        grid = QGridLayout(parent)
+    def _createMainGrid(self) -> QGridLayout:
+        """Creates display grid with frame boxes and components.
+
+        Returns:
+            QGridLayout: the primary frame layout
+        """
+        grid = QGridLayout()
         grid.setHorizontalSpacing(1)
         grid.setVerticalSpacing(1)
 
@@ -167,14 +197,15 @@ class RocketDisplayWindow(QMainWindow):
         grid.addWidget(self._createLabelBox(), 13, 6, 1, 6)
 
         return grid
-
-    def _createFrame(self):
-        #frame = self._createLabel()
-        #self._createGrid()
-        #self.generalLayout.addWidget(frame)
-        self.generalLayout.addLayout(self._createGrid())
     
-    def _createStatusButtons(self):
+    def _createStatusButtons(self) -> list[tuple]:
+        """Generate status control buttons.
+        
+        Returns:
+            list[tuple]: list of tuples with buttons and x, y grid locations.
+
+        May be modularized by passing keys in future.
+        """
         keys = ["ABORT", "PROCEED"]
         buttonDisplay = []
         for num, key in enumerate(keys):
@@ -183,7 +214,7 @@ class RocketDisplayWindow(QMainWindow):
             buttonDisplay.append((self.buttons[key], 0, num))
         return buttonDisplay
 
-    def _advanceState(self):
+    def _advanceState(self) -> None:
         """Advance current state."""
         # display
         if self.currentState < len(self.mode) - 1 and not self.aborted:
@@ -191,18 +222,32 @@ class RocketDisplayWindow(QMainWindow):
             self.dynamicLabels["StateDisplay"].setText(f"<h1> STATE: {self.mode[self.currentState]}")
             self.dynamicLabels["StateDisplay"].setStyleSheet(HEADER_STYLE)
     
-    def _abortMission(self):
+    def _abortMission(self) -> None:
         """Abort mission."""
         self.dynamicLabels["StateDisplay"].setText("<h1> MISSION ABORTED </h1>")
         self.aborted = True
 
-    def _linkButtons(self):
+    def _linkButtons(self) -> None:
         """Link buttons to functionality."""
         self.buttons["PROCEED"].clicked.connect(self._advanceState)
         self.buttons["ABORT"].clicked.connect(self._abortMission)
-        
+
+def main():
+    """Rocket Control GUI"""
+    app = QApplication([])
+    rocketDisplay = RocketDisplayWindow()
+    rocketDisplay.showMaximized()
+    sys.exit(app.exec())
 
 
+if __name__ == "__main__":
+    main()
+
+
+
+
+
+'''
 class RocketControlWindow:
 
     def __init__(self, view: RocketDisplayWindow, model=None) -> None:
@@ -211,18 +256,4 @@ class RocketControlWindow:
     
     def _connectButtonSignals(self):
         #self._view.buttons["PROCEED"].clicked.connect(self._view._advanceState)
-        pass
-
-        
-def main():
-    """Rocket Control GUI"""
-    app = QApplication([])
-    rocketDisplay = RocketDisplayWindow()
-    rocketDisplay.showMaximized()
-    RocketControlWindow(view=rocketDisplay)
-    sys.exit(app.exec())
-
-
-if __name__ == "__main__":
-    main()
-
+        pass'''
