@@ -63,7 +63,7 @@ BUTTON_STYLE = (
 
 HEADER_STYLE = "color: white; font-family: consolas; font-size: 9px"
 
-LAUNCH_MODE = ("LOADING", "FUEL OUT", "IGNITION", "TAKEOFF", "FLIGHT")
+LAUNCH_MODE = ("LOADING", "FUEL OUT", "OPEN V1", "OPEN V2", "IGNITION")
 STATIC_F_MODE = ("LOADING", "FUEL OUT", "IGNITION")
 
 class Clock:
@@ -237,10 +237,12 @@ class RocketDisplayWindow(QMainWindow):
     def _advanceState(self) -> None:
         """Advance current state."""
         # display
-        if self.currentState < len(self.mode) - 1 and not self.aborted:
+        if self.currentState <= len(self.mode) - 2 and not self.aborted:
             self.currentState += 1
             self.dynamicLabels["StateDisplay"].setText(f"<h1> STATE: {self.mode[self.currentState]}")
             self.dynamicLabels["StateDisplay"].setStyleSheet(HEADER_STYLE)
+        elif self.currentState == len(self.mode) - 1 and not self.aborted:
+            self._countDown()
     
     def _abortMission(self) -> None:
         """Abort mission."""
@@ -251,6 +253,21 @@ class RocketDisplayWindow(QMainWindow):
         """Link buttons to functionality."""
         self.buttons["PROCEED"].clicked.connect(self._advanceState)
         self.buttons["ABORT"].clicked.connect(self._abortMission)
+    
+    def _countDown(self) -> None:
+        """Starts countdown"""
+        if not self.aborted:
+            self.moment = 11
+            def _countSecond():
+                self.moment -= 1
+                if self.moment == 0:
+                    self.moment = "BLASTOFF"
+                    self.countdown.stop()
+                self.dynamicLabels["StateDisplay"].setText(f"<h1> COUNTDOWN: {self.moment} </h1>")
+            _countSecond()
+            self.countdown = QTimer()
+            self.countdown.timeout.connect(_countSecond)
+            self.countdown.start(1000)
 
 def main():
     """Rocket Control GUI"""
