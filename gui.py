@@ -18,10 +18,10 @@ from PyQt6.QtWidgets import (
     QGroupBox
 )
 
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QTimer, QDateTime
 from PyQt6.QtGui import QColor, QIcon, QPalette
 
-MIN_SIZE = 575
+MIN_SIZE = 600
 ICON_PATH = r"src\hydraLogo"
 
 PRIMARY = QColor(23, 24, 23)
@@ -61,10 +61,26 @@ BUTTON_STYLE = (
     )
 )
 
-HEADER_STYLE = "color: white; font-family: consolas; font-size: 10px"
+HEADER_STYLE = "color: white; font-family: consolas; font-size: 9px"
 
 LAUNCH_MODE = ("LOADING", "FUEL OUT", "IGNITION", "TAKEOFF", "FLIGHT")
 STATIC_F_MODE = ("LOADING", "FUEL OUT", "IGNITION")
+
+class Clock:
+    """Clock class to display self-updating label with time/date."""
+
+    def __init__(self, style: str) -> None:
+        self.dateTime = QLabel()
+        self.dateTime.setStyleSheet(style)
+        self.timer = QTimer()
+        self.updateTime()
+        self.timer.timeout.connect(self.updateTime)
+        self.timer.start(1000)
+    
+    def updateTime(self):
+        """Updates the time and date display."""
+        currentTime = QDateTime.currentDateTime().toString("hh:mm:ss\nMM/dd/yyyy")
+        self.dateTime.setText(currentTime)
 
 class DarkCyanPalette(QPalette):
     """Dark and Cyan Palette."""
@@ -117,6 +133,8 @@ class RocketDisplayWindow(QMainWindow):
 
         self.pal = DarkCyanPalette()
         self.setPalette(self.pal)
+
+        self.clock = Clock(HEADER_STYLE)
 
         # initialize UI
         self.generalLayout.addLayout(self._createMainGrid())
@@ -183,18 +201,19 @@ class RocketDisplayWindow(QMainWindow):
         grid.addWidget(self._createLabelBox("DiagTitle", "<h1> FLUIDS CONTROL DISPLAY </h1>", HEADER_STYLE), 0, 2, 1, 6)
         grid.addWidget(self._createLabelBox(), 0, 8, 1, 4)
 
-        # right column
+        # left column
         grid.addWidget(self._createLabelBox(), 1, 0, 10, 2)
         grid.addWidget(self._createLabelBox("StateDisplay", f"<h1> STATE: {self.mode[self.currentState]}</h1>", HEADER_STYLE), 11, 0, 1, 2)
         grid.addWidget(self._createLayoutBox(self._createStatusButtons()), 12, 0, 1, 2)        
 
-        # middle, left column
+        # middle, right column
         grid.addWidget(self._createLabelBox(), 1, 2, 12, 6)
         grid.addWidget(self._createLabelBox(), 1, 8, 12, 4)
 
         # bottom row
-        grid.addWidget(self._createLabelBox(), 13, 0, 1, 6)
-        grid.addWidget(self._createLabelBox(), 13, 6, 1, 6)
+        grid.addWidget(self._createLabelBox(), 13, 0, 3, 6)
+        grid.addWidget(self._createLabelBox(), 13, 6, 3, 5)
+        grid.addWidget(self._createLayoutBox([(self.clock.dateTime, 0, 0)]), 13, 11, 3, 1)
 
         return grid
     
@@ -206,10 +225,11 @@ class RocketDisplayWindow(QMainWindow):
 
         May be modularized by passing keys in future.
         """
-        keys = ["ABORT", "PROCEED"]
+        keys = ["PROCEED", "ABORT"]
         buttonDisplay = []
         for num, key in enumerate(keys):
-            self.buttons[key] =  QPushButton(key)
+            self.buttons[key] = QPushButton(key)
+            self.buttons[key].setFocusPolicy(Qt.FocusPolicy.NoFocus)
             self.buttons[key].setStyleSheet(BUTTON_STYLE)
             buttonDisplay.append((self.buttons[key], 0, num))
         return buttonDisplay
