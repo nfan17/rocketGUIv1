@@ -62,12 +62,38 @@ BUTTON_STYLE = (
 )
 
 HEADER_STYLE = "color: white; font-family: consolas; font-size: 9px"
+LAUNCH_STATES = ("IDLE", "HIGH PRESSURE", "TANK HIGH PRESSURE", "FIRE")
+LEAK_ACCEPT_RATE = "1 PSI / Min"
 
-LAUNCH_MODE = ("LOADING", "FUEL OUT", "OPEN V1", "OPEN V2", "IGNITION")
-STATIC_F_MODE = ("LOADING", "FUEL OUT", "IGNITION")
+#STATIC_F_MODE = ("IDLE", "HIGH PRESSURE", "TANK HIGH PRESSURE", "FIRE")
+
+# Dynamic Labels Map
+DIAGRAM_LABEL = "D_Label"
+STATUS_LABEL = "Status"
+CURR_STATE = "StateDisplay"
+
+# Button Map
+PROCEED = "PROCEED"
+IGNITION_FAILURE = "IGNITION FAIL"
+OVERPRESSURE = "OVERPRESSURE"
+
+class State:
+    """State object to manage state displays."""
+
+    class Task:
+        """Task object to manage task data."""
+
+        def __init__(self, name: str, description: list[str]) -> None:
+            self.taskName = name
+            self.notes = description
+    
+    def __init__(self, name: str, tasks: list[tuple]) -> None:
+        self.stateName = name
+        self.tasklist = [self.Task(taskInfo[0], taskInfo[1]) for taskInfo in tasks if len(tasks) > 0]
+
 
 class Clock:
-    """Clock class to display self-updating label with time/date."""
+    """QLabel clock class to display self-updating label with time/date."""
 
     def __init__(self, style: str) -> None:
         self.dateTime = QLabel()
@@ -114,7 +140,7 @@ class RocketDisplayWindow(QMainWindow):
         super().__init__()
 
         # control aspects
-        self.mode = LAUNCH_MODE
+        self.mode = LAUNCH_STATES
         self.currentState = 0
         self.aborted = False
         self.buttons = {}
@@ -126,22 +152,21 @@ class RocketDisplayWindow(QMainWindow):
         self.setMinimumSize(MIN_SIZE * 2, MIN_SIZE)
         self.setWindowIcon(QIcon(ICON_PATH))
 
-        self.generalLayout = QVBoxLayout()
-        centralWidget = QWidget()
-        centralWidget.setLayout(self.generalLayout)
-        self.setCentralWidget(centralWidget)
-
         self.pal = DarkCyanPalette()
         self.setPalette(self.pal)
 
         self.clock = Clock(HEADER_STYLE)
 
-        # initialize UI
-        self.generalLayout.addLayout(self._createMainGrid())
+        self.generalLayout = self._createMainGrid()
+
+        centralWidget = QWidget()
+        centralWidget.setLayout(self.generalLayout)
+        self.setCentralWidget(centralWidget)
+
         self._linkButtons()
 
 
-    def _createLabelBox(self, labelType: str | None=None, message: str | None = None, style: str | None = None) -> QLabel:
+    def _createLabelBox(self, message: str | None = None, labelType: str | None=None, style: str | None = None) -> QLabel:
         """Creates frame box with optional label message.
         
         Args:
@@ -187,7 +212,7 @@ class RocketDisplayWindow(QMainWindow):
         return label
     
     def _createMainGrid(self) -> QGridLayout:
-        """Creates display grid with frame boxes and components.
+        """Creates primary display grid with frame boxes and components.
 
         Returns:
             QGridLayout: the primary frame layout
@@ -197,35 +222,39 @@ class RocketDisplayWindow(QMainWindow):
         grid.setVerticalSpacing(1)
 
         # top row
-        grid.addWidget(self._createLabelBox("LeftTitle", "<h1> VEHICLE STATUS </h1>", HEADER_STYLE), 0, 0, 1, 2)
-        grid.addWidget(self._createLabelBox("DiagTitle", "<h1> FLUIDS CONTROL DISPLAY </h1>", HEADER_STYLE), 0, 2, 1, 6)
-        grid.addWidget(self._createLabelBox(), 0, 8, 1, 4)
+        grid.addWidget(self._createLabelBox("<h1> VEHICLE STATUS </h1>", STATUS_LABEL, HEADER_STYLE), 0, 0, 1, 3)
+        grid.addWidget(self._createLabelBox("<h1> FLUIDS CONTROL DISPLAY </h1>", DIAGRAM_LABEL, HEADER_STYLE), 0, 3, 1, 6)
+        grid.addWidget(self._createLabelBox(), 0, 9, 1, 3)
 
         # left column
-        grid.addWidget(self._createLabelBox(), 1, 0, 10, 2)
-        grid.addWidget(self._createLabelBox("StateDisplay", f"<h1> STATE: {self.mode[self.currentState]}</h1>", HEADER_STYLE), 11, 0, 1, 2)
-        grid.addWidget(self._createLayoutBox(self._createStatusButtons()), 12, 0, 1, 2)        
+        grid.addWidget(self._createLabelBox(f"<h1>STATE: {self.mode[self.currentState]}</h1>", CURR_STATE, HEADER_STYLE), 1, 0, 1, 3)
+        grid.addWidget(self._createLabelBox("Hello", "helloTest", HEADER_STYLE), 2, 0, 8, 3)
+        grid.addWidget(self._createLayoutBox(self._createButtonSets([PROCEED])), 10, 0, 1, 3)
+        grid.addWidget(self._createLayoutBox([(self.clock.dateTime, 0, 0)]), 11, 0, 2, 3)
 
         # middle, right column
-        grid.addWidget(self._createLabelBox(), 1, 2, 12, 6)
-        grid.addWidget(self._createLabelBox(), 1, 8, 12, 4)
+        grid.addWidget(self._createLabelBox(), 1, 3, 12, 6)
+        grid.addWidget(self._createLabelBox(), 1, 9, 12, 3)
 
         # bottom row
-        grid.addWidget(self._createLabelBox(), 13, 0, 3, 6)
-        grid.addWidget(self._createLabelBox(), 13, 6, 3, 5)
-        grid.addWidget(self._createLayoutBox([(self.clock.dateTime, 0, 0)]), 13, 11, 3, 1)
+        #grid.addWidget(self._createLabelBox(), 13, 0, 3, 6)
+        #grid.addWidget(self._createLabelBox(), 13, 6, 3, 5)
+        #grid.addWidget(self._createLayoutBox([(self.clock.dateTime, 0, 0)]), 13, 11, 3, 1)
 
         return grid
+
+    #def _createTaskList(self)
     
-    def _createStatusButtons(self) -> list[tuple]:
+    def _createButtonSets(self, keys: list[str]) -> list[tuple]:
         """Generate status control buttons.
         
+        Args:
+            keys(list[str]): list of button names (for dictionary hashing)
+
         Returns:
             list[tuple]: list of tuples with buttons and x, y grid locations.
 
-        May be modularized by passing keys in future.
         """
-        keys = ["PROCEED", "ABORT"]
         buttonDisplay = []
         for num, key in enumerate(keys):
             self.buttons[key] = QPushButton(key)
@@ -239,20 +268,30 @@ class RocketDisplayWindow(QMainWindow):
         # display
         if self.currentState <= len(self.mode) - 2 and not self.aborted:
             self.currentState += 1
-            self.dynamicLabels["StateDisplay"].setText(f"<h1> STATE: {self.mode[self.currentState]}")
-            self.dynamicLabels["StateDisplay"].setStyleSheet(HEADER_STYLE)
+            self.dynamicLabels[CURR_STATE].setText(f"<h1>STATE: {self.mode[self.currentState]}")
+            self.dynamicLabels[CURR_STATE].setStyleSheet(HEADER_STYLE)
+            
         elif self.currentState == len(self.mode) - 1 and not self.aborted:
             self._countDown()
+            # reference for removing and adding widgets
+            remove = self.generalLayout.itemAtPosition(2, 0)
+            widget = remove.widget()
+            self.generalLayout.removeWidget(widget)
+            self.generalLayout.addWidget(self._createLabelBox("whoooo", "helloTest", HEADER_STYLE), 2, 0, 8, 3)
     
     def _abortMission(self) -> None:
         """Abort mission."""
-        self.dynamicLabels["StateDisplay"].setText("<h1> MISSION ABORTED </h1>")
+        self.dynamicLabels[CURR_STATE].setText("<h1> MISSION ABORTED </h1>")
         self.aborted = True
+        try:
+            self.countdown.stop()
+        except AttributeError:
+            pass
 
     def _linkButtons(self) -> None:
         """Link buttons to functionality."""
-        self.buttons["PROCEED"].clicked.connect(self._advanceState)
-        self.buttons["ABORT"].clicked.connect(self._abortMission)
+        self.buttons[PROCEED].clicked.connect(self._advanceState)
+        #self.buttons["ABORT"].clicked.connect(self._abortMission)
     
     def _countDown(self) -> None:
         """Starts countdown"""
@@ -263,7 +302,7 @@ class RocketDisplayWindow(QMainWindow):
                 if self.moment == 0:
                     self.moment = "BLASTOFF"
                     self.countdown.stop()
-                self.dynamicLabels["StateDisplay"].setText(f"<h1> COUNTDOWN: {self.moment} </h1>")
+                self.dynamicLabels[CURR_STATE].setText(f"<h1> COUNTDOWN: {self.moment} </h1>")
             _countSecond()
             self.countdown = QTimer()
             self.countdown.timeout.connect(_countSecond)
@@ -271,7 +310,7 @@ class RocketDisplayWindow(QMainWindow):
 
 def main():
     """Rocket Control GUI"""
-    app = QApplication([])
+    app = QApplication(sys.argv)
     rocketDisplay = RocketDisplayWindow()
     rocketDisplay.showMaximized()
     sys.exit(app.exec())
