@@ -46,7 +46,7 @@ BUTTON_STYLE = (
         border-width: 1px;
         border-radius: 2px;
         border-color: %s;
-        font: bold 14px;
+        font: bold 16px;
     }
     QPushButton:hover {
         color: white;
@@ -73,9 +73,11 @@ LEAK_ACCEPT_RATE = "1 PSI / Min"
 DIAGRAM_LABEL = "D_Label"
 STATUS_LABEL = "Status"
 CURR_STATE = "StateDisplay"
+ABORT = "Abort"
 
 # Button Map
-PROCEED = "ADVANCE STAGE"
+PROCEED = "\nADVANCE STAGE\n"
+MARK_STEP = "\nMARK NEXT TASK\n"
 IGNITION_FAILURE = "IGNITION FAIL"
 OVERPRESSURE = "OVERPRESSURE"
 
@@ -87,10 +89,10 @@ STAGE_FONT_BLUE = "color: #00A891; font-family: consolas; font-size: 13px; "
 class RocketStates:
 
     # States
-    IDLE = "1. Leak Checks"
-    HIGH_PRESS = "2. Upper Pressurization"
-    TANK_HP = "3. Fuel/Ox Pressurization"
-    FIRE = "4. Initiate Launch"
+    IDLE = "Leak Checks:"
+    HIGH_PRESS = "Upper Pressurization:"
+    TANK_HP = "Fuel/Ox Pressurization:"
+    FIRE = "Initiate Launch:"
 
     states = (IDLE, HIGH_PRESS, TANK_HP, FIRE)
 
@@ -127,19 +129,25 @@ class RocketStates:
     TANK_HP_TASKS = { COPV_CLOSE: (COPV_CLOSE_MSG, False), TANKS_OPEN: (TANKS_OPEN_MSG, False) }
     FIRE_TASKS = { FIRE_INIT: (FIRE_INIT_MSG, False) }
 
-class TaskList(QLabel):
+    NULL = None
+
+
+class FireProcedure(QLabel):
 
     def __init__(self) -> None:
         super().__init__()
-        self.currentStage = 0
+        self.currentStage = RocketStates.IDLE
         self.labels = {}
+        self.tasks = {}
 
+        # set stages ------------------------------------------------------------------------------|
         self.stages = {
             RocketStates.IDLE: self.addStage(RocketStates.IDLE, RocketStates.IDLE_TASKS),
             RocketStates.HIGH_PRESS: self.addStage(RocketStates.HIGH_PRESS, RocketStates.HP_TASKS),
             RocketStates.TANK_HP: self.addStage(RocketStates.TANK_HP, RocketStates.TANK_HP_TASKS),
             RocketStates.FIRE: self.addStage(RocketStates.FIRE, RocketStates.FIRE_TASKS),
         }
+        # -----------------------------------------------------------------------------------------|
 
         self.generalLayout = QGridLayout()
         for i, stage in enumerate(self.stages.keys()):
@@ -152,22 +160,91 @@ class TaskList(QLabel):
         header = QLabel(f"<h1> {name} </h1>")
         header.setStyleSheet(HEADER_STYLE)
         self.labels[name] = header
+
         layout.addWidget(header, 0, 0, 1, 1)
 
         for i, task in enumerate(tasks.keys()):
             t = tasks[task]
             label = QLabel(f"{t[0]}")
-            label.setStyleSheet(STAGE_FONT_WHITE)
+            label.setStyleSheet(HEADER_STYLE + "font-size: 13px")
             self.labels[task] = label
+            try:
+                self.tasks[name].update({ task: t[1] })
+            except KeyError:
+                self.tasks[name] = { task: t[1]}
             layout.addWidget(label, i + 1, 0, 1, 1)
         return layout
 
     def changeStatus(self, label: str, status: bool= True) -> None:
         color = "#00A891" if status else "white"
-        fontSize = 9 if label in RocketStates.states else 13
-        self.labels[label].setStyleSheet(
-            f"color: {color}; font-family: consolas; font-size: {fontSize}px; "
-        )
+        try:
+            if label in RocketStates.states:
+                fontSize = 9
+            else:
+                fontSize = 13
+                self.tasks[self.currentStage][label] = status
+            self.labels[label].setStyleSheet(
+                f"color: {color}; font-family: consolas; font-size: {fontSize}px; "
+            )
+        except KeyError:
+            return
+    
+    def idleTasks(self):
+        if not self.tasks[RocketStates.IDLE][RocketStates.COPV_OPEN]:
+            return RocketStates.COPV_OPEN, "Confirm COPV open/Acceptable leak rate?"
+        return RocketStates.NULL, "No more tasks, advance stage to continue."
+
+    def highPressTasks(self):
+        if not self.tasks[RocketStates.HIGH_PRESS][RocketStates.KBOTTLE]:
+            return RocketStates.KBOTTLE, "Confirm K-bottle has been opened?"
+        if not self.tasks[RocketStates.HIGH_PRESS][RocketStates.COPV_EQ]:
+            return RocketStates.COPV_EQ, "Confirm COPV pressure equalization?"
+        return RocketStates.NULL, "No more tasks, advance stage to continue."
+
+    def tankHighPressTasks(self):
+        if not self.tasks[RocketStates.TANK_HP][RocketStates.COPV_CLOSE]:
+            return RocketStates.COPV_CLOSE, "Confirm COPV SV is closed?"
+        if not self.tasks[RocketStates.TANK_HP][RocketStates.TANKS_OPEN]:
+            return RocketStates.TANKS_OPEN, "Confirm top 3 SVs open/Acceptable leak rate?"
+        return RocketStates.NULL, "No more tasks, advance stage to continue."
+
+    def fireTasks(self):
+        if not self.tasks[RocketStates.FIRE][RocketStates.FIRE_INIT]:
+            return RocketStates.FIRE_INIT, "Confirm begin fire sequence?"
+        return RocketStates.NULL, "No more tasks."
+
+class StateMachine:
+
+    class State:
+
+        def __init__(self, next, confirms) -> None:
+            self.next = next
+            self.confirms = confirms
+
+    def __init__(self, procedure: FireProcedure):
+        self.states = {}
+        self.procedure = procedure
+        self.start = procedure.currentStage
+    
+    @property
+    def current(self) -> str:
+        return self.procedure.currentStage
+
+    @current.setter
+    def current(self, stage: str) -> None:
+        self.procedure.currentStage = stage
+
+    def addState(self, name, next, confirms):
+        self.states[name] = StateMachine.State(next, confirms)
+
+    def update(self):
+        print(self.procedure.tasks[self.current])
+        for task in self.procedure.tasks[self.current].values():
+            if not task:
+                return False
+        last = self.current
+        self.current = self.states[self.current].next
+        return last
 
 class Clock:
     """QLabel clock class to display self-updating label with time/date."""
@@ -182,7 +259,7 @@ class Clock:
     
     def updateTime(self):
         """Updates the time and date display."""
-        currentTime = QDateTime.currentDateTime().toString("       hh:mm:ss | MM/dd/yyyy")
+        currentTime = QDateTime.currentDateTime().toString("      hh:mm:ss | MM/dd/yyyy")
         self.dateTime.setText(currentTime)
 
 class DarkCyanPalette(QPalette):
@@ -211,7 +288,7 @@ class RocketDisplayWindow(QMainWindow):
         self.dynamicLabels = {}
 
         # display
-        self.setWindowTitle("LR Mission Control")
+        self.setWindowTitle("Mission Control")
         #self.setStyleSheet(f"background-color: {PRIMARY_H};")
         self.setMinimumSize(MIN_SIZE * 2, MIN_SIZE)
         self.setWindowIcon(QIcon(ICON_PATH))
@@ -313,14 +390,21 @@ class RocketDisplayWindow(QMainWindow):
         grid.addWidget(self.createLayoutBox([(self.clock.dateTime, 0, 0, 1, 1)]), 0, 9, 1, 3)
 
         # left column
-        self.states = TaskList()
-        self.states.changeStatus(RocketStates.IDLE, True)
+        self.procedure = FireProcedure()
+        self.sm = StateMachine(self.procedure)
+        self.sm.addState(RocketStates.IDLE, RocketStates.HIGH_PRESS, self.procedure.idleTasks)
+        self.sm.addState(RocketStates.HIGH_PRESS, RocketStates.TANK_HP, self.procedure.highPressTasks)
+        self.sm.addState(RocketStates.TANK_HP, RocketStates.FIRE, self.procedure.tankHighPressTasks)
+        self.sm.addState(RocketStates.FIRE, None, self.procedure.fireTasks)
 
-        grid.addWidget(self.createLabelBox(f"<h1>STATE: {self.mode[self.currentState]}</h1>", CURR_STATE, HEADER_STYLE), 1, 0, 1, 3)
-        grid.addWidget(self.createLayoutBox([(self.states, 0, 0, 1, 1)]), 2, 0, 8, 3)
-        grid.addWidget(self.createLayoutBox(self.createButtonSets([(PROCEED, 0, 0, 1, 2), (OVERPRESSURE, 1, 0, 1, 1), (IGNITION_FAILURE, 1, 1, 1, 1)])), 10, 0, 2, 3)
+        grid.addWidget(self.createLabelBox(f"<h1>STAGE: {self.mode[self.currentState]}</h1>", CURR_STATE, HEADER_STYLE), 1, 0, 1, 3)
+        grid.addWidget(self.createLayoutBox([(self.procedure, 0, 0, 1, 1)]), 2, 0, 8, 3)
+        grid.addWidget(self.createLayoutBox(self.createButtonSets([(PROCEED, 0, 0, 1, 1), (MARK_STEP, 0, 1, 1, 1)])), 10, 0, 2, 3)
         #grid.addWidget(self.createLayoutBox([(self.clock.dateTime, 0, 0)]), 12, 0, 2, 3)
-        grid.addWidget(self.createLabelBox(), 12, 0, 2, 3)
+        #grid.addWidget(self.createLayoutBox([(self.states, 0, 0, 1, 1)]), 4, 0, 8, 3)
+        #grid.addWidget(self.createLayoutBox(self.createButtonSets([(PROCEED, 0, 0, 1, 1), (MARK_STEP, 0, 1, 1, 1)])), 2, 0, 2, 3)
+        grid.addWidget(self.createLabelBox(f"<h1>ABORT MISSION: </h1>", ABORT, HEADER_STYLE), 12, 0, 1, 3)
+        grid.addWidget(self.createLayoutBox(self.createButtonSets([(OVERPRESSURE, 0, 0, 1, 1), (IGNITION_FAILURE, 0, 1, 1, 1)])), 13, 0, 1, 3)
 
         # middle, right column
         grid.addWidget(self.createLabelBox(), 1, 3, 13, 6)
@@ -356,7 +440,7 @@ class RocketDisplayWindow(QMainWindow):
         # display
         if self.currentState <= len(self.mode) - 2 and not self.aborted:
             self.currentState += 1
-            self.dynamicLabels[CURR_STATE].setText(f"<h1>STATE: {self.mode[self.currentState]}")
+            self.dynamicLabels[CURR_STATE].setText(f"<h1>STAGE: {self.mode[self.currentState]}")
             self.dynamicLabels[CURR_STATE].setStyleSheet(HEADER_STYLE)
 
         elif self.currentState == len(self.mode) - 1 and not self.aborted:
@@ -366,6 +450,32 @@ class RocketDisplayWindow(QMainWindow):
             widget = remove.widget()
             self.generalLayout.removeWidget(widget)
             self.generalLayout.addWidget(self.createLabelBox("whoooo", "helloTest", HEADER_STYLE), 2, 0, 8, 3)
+
+    def updateStage(self):
+        last = self.sm.update()
+        if not last:
+            print("tasks incomplete")
+            return
+        if self.currentState <= len(self.mode) - 2 and not self.aborted:
+            self.currentState += 1
+            self.dynamicLabels[CURR_STATE].setText(f"<h1>STAGE: {self.mode[self.currentState]}")
+            self.dynamicLabels[CURR_STATE].setStyleSheet(HEADER_STYLE)
+        self.procedure.changeStatus(last)
+    
+    def updateTask(self):
+        task, msg = self.sm.states[self.sm.current].confirms()
+        print(task, msg)
+        conf = QMessageBox(
+            QMessageBox.Icon.Warning,
+                "Status Confirmation",
+                msg,
+                QMessageBox.StandardButton.Ok | QMessageBox.StandardButton.Cancel,
+                self.centralWidget(),
+        )
+        conf.setDefaultButton(QMessageBox.StandardButton.Cancel)
+        if conf.exec() == QMessageBox.StandardButton.Ok and task != RocketStates.NULL:
+            self.procedure.changeStatus(task)
+            print(self.procedure.tasks)
 
     def abortMission(self, confirmation: str) -> bool:
         """Abort mission confirmation.
@@ -422,7 +532,8 @@ class RocketDisplayWindow(QMainWindow):
 
     def linkButtons(self) -> None:
         """Link buttons to functionality."""
-        self.buttons[PROCEED].clicked.connect(self.advanceState)
+        self.buttons[PROCEED].clicked.connect(self.updateStage)
+        self.buttons[MARK_STEP].clicked.connect(self.updateTask)
         self.buttons[OVERPRESSURE].clicked.connect(self.abortOverpressure)
         self.buttons[IGNITION_FAILURE].clicked.connect(self.abortIgnitionFail)
     

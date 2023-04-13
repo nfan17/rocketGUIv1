@@ -1,26 +1,3 @@
-class StateMachine:
-    def __init__(self):
-        self.handlers = {}
-        self.start_state = None
-        self.current_state = None
-        self.end_states = []
-
-    def add_state(self, name, handler, end_state=False):
-        name = name
-        self.handlers[name] = handler
-        if end_state:
-            self.end_states.append(name)
-
-    def set_start(self, name):
-        self.start_state = name
-        self.current_state = self.start_state
-
-    def update(self, value):
-        handler = self.handlers[self.current_state]
-        (self.current_state, output) = handler(value)
-        print(self.current_state, output)
-        return output, self.current_state in self.end_states
-
 class RocketStates:
 
     # States
@@ -62,15 +39,40 @@ class RocketStates:
     TANK_HP_TASKS = { COPV_CLOSE: (COPV_CLOSE_MSG, False), TANKS_OPEN: (TANKS_OPEN_MSG, False) }
     FIRE = { FIRE_INIT: (FIRE_INIT_MSG, False) }
 
+
+class StateMachine:
+    def __init__(self):
+        self.handlers = {}
+        self.start = None
+        self.current = None
+        self.ends = []
+
+    def addState(self, name, handler, end_state=False):
+        name = name
+        self.handlers[name] = handler
+        if end_state:
+            self.ends.append(name)
+
+    def setStart(self, name):
+        self.start = name
+        self.current = self.start
+
+    def update(self, value):
+        handler = self.handlers[self.current]
+        (self.current, output) = handler(value)
+        print(self.current, output)
+        return self.current, output
+
+
 # Example usage:
 
-def handler1(input):
+def idleHandler(state_input: bool):
     if input == 'go':
         return ('state2', 'going')
     else:
         return ('state1', '')
 
-def handler2(input):
+def handler2():
     if input == 'stop':
         return ('end', 'stopping')
     else:
