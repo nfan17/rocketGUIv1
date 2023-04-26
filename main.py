@@ -372,6 +372,20 @@ class RocketDisplayWindow(QMainWindow):
         label.setFrameStyle(QFrame.Shape.Panel)
         label.setLineWidth(1)
         return label
+
+    def createConfBox(self, title: str, message: str, default: bool=True) -> bool:
+        conf = QMessageBox(
+            QMessageBox.Icon.Warning,
+                title,
+                message,
+                QMessageBox.StandardButton.Ok | QMessageBox.StandardButton.Cancel,
+                self.centralWidget(),
+        )
+        if not default:
+            conf.setDefaultButton(QMessageBox.StandardButton.Cancel)
+        if conf.exec() == QMessageBox.StandardButton.Ok:
+            return True
+        return False
     
     def createMainGrid(self) -> QGridLayout:
         """Creates primary display grid with frame boxes and components.
@@ -452,30 +466,28 @@ class RocketDisplayWindow(QMainWindow):
             self.generalLayout.addWidget(self.createLabelBox("whoooo", "helloTest", HEADER_STYLE), 2, 0, 8, 3)
 
     def updateStage(self):
-        last = self.sm.update()
-        if not last:
-            print("tasks incomplete")
-            return
-        if self.currentState <= len(self.mode) - 2 and not self.aborted:
-            self.currentState += 1
-            self.dynamicLabels[CURR_STATE].setText(f"<h1>STAGE: {self.mode[self.currentState]}")
-            self.dynamicLabels[CURR_STATE].setStyleSheet(HEADER_STYLE)
-        self.procedure.changeStatus(last)
+        """Tries to update the stage."""
+        if not self.aborted:
+            if not self.createConfBox("Stage Advancement", "Confirm: advance to next stage?"):
+                return
+            last = self.sm.update()
+            if not last:
+                self.createConfBox("Stage Advancement", "Incomplete tasks remaining, unable to advance.")
+                return
+            if self.currentState <= len(self.mode) - 2 and not self.aborted:
+                self.currentState += 1
+                self.dynamicLabels[CURR_STATE].setText(f"<h1>STAGE: {self.mode[self.currentState]}")
+                self.dynamicLabels[CURR_STATE].setStyleSheet(HEADER_STYLE)
+            self.procedure.changeStatus(last)
     
     def updateTask(self):
-        task, msg = self.sm.states[self.sm.current].confirms()
-        print(task, msg)
-        conf = QMessageBox(
-            QMessageBox.Icon.Warning,
-                "Status Confirmation",
-                msg,
-                QMessageBox.StandardButton.Ok | QMessageBox.StandardButton.Cancel,
-                self.centralWidget(),
-        )
-        conf.setDefaultButton(QMessageBox.StandardButton.Cancel)
-        if conf.exec() == QMessageBox.StandardButton.Ok and task != RocketStates.NULL:
-            self.procedure.changeStatus(task)
-            print(self.procedure.tasks)
+        """Tries to update a task."""
+        if not self.aborted:
+            task, msg = self.sm.states[self.sm.current].confirms()
+            print(task, msg)
+            conf = self.createConfBox("Status Confirmation", msg, default=False)
+            if conf and task != RocketStates.NULL:
+                self.procedure.changeStatus(task)
 
     def abortMission(self, confirmation: str) -> bool:
         """Abort mission confirmation.
@@ -486,15 +498,7 @@ class RocketDisplayWindow(QMainWindow):
         Returns:
             bool: abortion confirmation status
         """
-        conf = QMessageBox(
-                QMessageBox.Icon.Warning,
-                "Mission Abort Confirmation",
-                confirmation,
-                QMessageBox.StandardButton.Ok | QMessageBox.StandardButton.Cancel,
-                self.centralWidget(),
-        )
-        conf.setDefaultButton(QMessageBox.StandardButton.Cancel)
-        if conf.exec() == QMessageBox.StandardButton.Ok:
+        if self.createConfBox("Mission Abort Confirmation", confirmation, default=False):
             self.dynamicLabels[CURR_STATE].setText("<h1> MISSION ABORTED </h1>")
             self.aborted = True
             try:
