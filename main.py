@@ -263,15 +263,14 @@ class RocketDisplayWindow(QMainWindow):
 
     # SERIAL FUNCTIONS
 
-    def threadingSetup(self) -> None:
+    def threadingSetup(self, serial: SerialComm) -> None:
         """Sets up threading, serial worker and signals/slots.
         
         *Serial Window Core
         """
         self.serialThread = QThread()
-        self.serialConnection = self.setupConnection(self.port, self.baud)
         self.serialLock = QMutex()
-        self.serialWorker = SerialWorker(self.serialConnection, self.serialLock, "")
+        self.serialWorker = SerialWorker(serial, self.serialLock, "")
         self.serialWorker.moveToThread(self.serialThread)
         self.serialThread.started.connect(self.serialWorker.run)
         self.serialWorker.cleanup.connect(self.serialThread.quit)
@@ -363,6 +362,7 @@ class RocketDisplayWindow(QMainWindow):
         if self.serialSet and not self.serialOn:
             try:
                 self.serial = setupConnection(self.port, self.baud)
+                self.threadingSetup(self.serial)
                 self.serialOn = True
                 self.buttons[SER_TOGGLE].setText(SER_OFF)
             except serial.SerialException:
@@ -372,12 +372,15 @@ class RocketDisplayWindow(QMainWindow):
                     QMessageBox.Icon.Critical
                 )
         elif self.serialOn:
-            self.serial.close()
+            self.serialWorker.program = False
+            time.sleep(0.1)
+            if self.serial.connection.is_open:
+                self.serial.close()
             del self.serial
             self.serialOn = False
             self.buttons[SER_TOGGLE].setText(SER_ON)
         else:
-            self.createConfBox("Serial Error", "Serial settings not complete.")
+            self.createConfBox("Serial Error", "Serial settings not configured.")
 
     def errorExit(self) -> None:
         """Starts exit sequence on handling of a serial exception."""
