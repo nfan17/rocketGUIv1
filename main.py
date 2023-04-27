@@ -12,62 +12,22 @@ from PyQt6.QtWidgets import (
     QLabel,
     QMainWindow,
     QPushButton,
-    QVBoxLayout,
     QWidget,
     QFrame,
-    QGroupBox,
     QMessageBox
 )
 
-from PyQt6.QtCore import Qt, QTimer, QDateTime, QObject, pyqtSignal
-from PyQt6.QtGui import QColor, QIcon, QPalette
+from PyQt6.QtCore import Qt, QTimer, QDateTime, QThread, pyqtSlot
+from PyQt6.QtGui import QIcon
+
+from utils import *
 
 
 MIN_SIZE = 600
 ICON_PATH = r"src\octoLogo"
 
-PRIMARY = QColor(23, 24, 23)
-PRIMARY_H = "#171817"
-WHITE = Qt.GlobalColor.white
-#DETAILING = QColor(55,247,18) # green
-#DETAILING = QColor(40,231,98) # darker green
-#DETAILING = QColor(247,0,246) # purp
-DETAILING = QColor(0, 168, 145) # darker blue
-DETAILING_H = "#00A891"
-#DETAILING = QColor(48, 170, 170) # lighter blue
-SECONDARY = WHITE
-
-BUTTON_STYLE = (
-    """
-    QPushButton {
-        font-family: consolas;
-        background-color: %s;
-        border-style: outset;
-        border-width: 1px;
-        border-radius: 2px;
-        border-color: %s;
-        font: bold 16px;
-    }
-    QPushButton:hover {
-        color: white;
-        background-color: %s;
-    }
-    QPushButton:pressed {
-        color: white;
-        background-color: %s;
-    }""" % (
-        DETAILING_H,
-        DETAILING_H,
-        DETAILING_H,
-        PRIMARY_H
-    )
-)
-
-HEADER_STYLE = "color: white; font-family: consolas; font-size: 9px; "
 LAUNCH_STATES = ("IDLE", "HIGH PRESSURE", "TANK HIGH PRESSURE", "FIRE")
 LEAK_ACCEPT_RATE = "1 PSI / Min"
-
-#STATIC_F_MODE = ("IDLE", "HIGH PRESSURE", "TANK HIGH PRESSURE", "FIRE")
 
 # Dynamic Labels Map
 DIAGRAM_LABEL = "D_Label"
@@ -83,8 +43,6 @@ OVERPRESSURE = "OVERPRESSURE"
 
 # Pin Map
 
-STAGE_FONT_WHITE = "color: white; font-family: consolas; font-size: 13px; "
-STAGE_FONT_BLUE = "color: #00A891; font-family: consolas; font-size: 13px; "
 
 class RocketStates:
 
@@ -214,8 +172,10 @@ class FireProcedure(QLabel):
         return RocketStates.NULL, "No more tasks."
 
 class StateMachine:
+    """State machine for launch procedure steps."""
 
     class State:
+        """Linked nodes to point to next state."""
 
         def __init__(self, next, confirms) -> None:
             self.next = next
@@ -228,17 +188,26 @@ class StateMachine:
     
     @property
     def current(self) -> str:
+        """Current state property."""
         return self.procedure.currentStage
 
     @current.setter
     def current(self, stage: str) -> None:
+        """Sets current procedure in FireProcedure."""
         self.procedure.currentStage = stage
 
-    def addState(self, name, next, confirms):
+    def addState(self, name, next, confirms) -> None:
+        """Adds a state.
+        
+        Args:
+            name: the name of the state
+            next: the next state
+            confirms: the confirmation message to procede
+        """
         self.states[name] = StateMachine.State(next, confirms)
 
     def update(self):
-        print(self.procedure.tasks[self.current])
+        """Updates task status."""
         for task in self.procedure.tasks[self.current].values():
             if not task:
                 return False
@@ -262,16 +231,7 @@ class Clock:
         currentTime = QDateTime.currentDateTime().toString("      hh:mm:ss | MM/dd/yyyy")
         self.dateTime.setText(currentTime)
 
-class DarkCyanPalette(QPalette):
-    """Dark and Cyan Palette."""
-
-    def __init__(self) -> None:
-        super().__init__()
-        self.setColor(QPalette.ColorRole.Window, PRIMARY)
-        self.setColor(QPalette.ColorRole.WindowText, DETAILING)
-        self.setColor(QPalette.ColorRole.Text, WHITE)
-        self.setColor(QPalette.ColorRole.Base, SECONDARY)
-
+# MAIN WINDOW -------------------------------------------------------------------------------------------------|
 
 class RocketDisplayWindow(QMainWindow):
     """Main Rocket Control Window."""
@@ -280,26 +240,22 @@ class RocketDisplayWindow(QMainWindow):
         """Constructs new Rocket Display Window."""
         super().__init__()
 
-        # control aspects
+        # values
         self.mode = LAUNCH_STATES
         self.currentState = 0
         self.aborted = False
         self.buttons = {}
         self.dynamicLabels = {}
 
-        # display
+        # window
         self.setWindowTitle("Mission Control")
-        #self.setStyleSheet(f"background-color: {PRIMARY_H};")
         self.setMinimumSize(MIN_SIZE * 2, MIN_SIZE)
         self.setWindowIcon(QIcon(ICON_PATH))
-
         self.pal = DarkCyanPalette()
         self.setPalette(self.pal)
 
-        self.clock = Clock("color: white; font-family: consolas; font-size: 16px; ")
-
+        # layout
         self.generalLayout = self.createMainGrid()
-
         centralWidget = QWidget()
         centralWidget.setLayout(self.generalLayout)
         self.setCentralWidget(centralWidget)
@@ -331,8 +287,7 @@ class RocketDisplayWindow(QMainWindow):
         label.setLineWidth(1)
         return label
 
-    @staticmethod
-    def createLayout(parent, widgets: list[tuple]) -> QGridLayout:
+    def createLayout(self, parent, widgets: list[tuple]) -> QGridLayout:
         """Creates a layout of widgets.
         
         Args:
@@ -386,7 +341,7 @@ class RocketDisplayWindow(QMainWindow):
         if conf.exec() == QMessageBox.StandardButton.Ok:
             return True
         return False
-    
+
     def createMainGrid(self) -> QGridLayout:
         """Creates primary display grid with frame boxes and components.
 
@@ -398,9 +353,10 @@ class RocketDisplayWindow(QMainWindow):
         grid.setVerticalSpacing(1)
 
         # top row
+        self.clock = Clock("color: white; font-family: consolas; font-size: 16px; ")
+        
         grid.addWidget(self.createLabelBox("<h1> VEHICLE STATUS </h1>", STATUS_LABEL, HEADER_STYLE), 0, 0, 1, 3)
         grid.addWidget(self.createLabelBox("<h1> FLUIDS CONTROL DISPLAY </h1>", DIAGRAM_LABEL, HEADER_STYLE), 0, 3, 1, 6)
-        #grid.addWidget(self.createLabelBox(), 0, 9, 1, 3)
         grid.addWidget(self.createLayoutBox([(self.clock.dateTime, 0, 0, 1, 1)]), 0, 9, 1, 3)
 
         # left column
@@ -422,7 +378,8 @@ class RocketDisplayWindow(QMainWindow):
 
         # middle, right column
         grid.addWidget(self.createLabelBox(), 1, 3, 13, 6)
-        grid.addWidget(self.createLabelBox(), 1, 9, 13, 3)
+        grid.addWidget(self.createLabelBox(), 1, 9, 11, 3)
+        grid.addWidget(self.createLabelBox(), 12, 9, 2, 3)
 
         # bottom row
         #grid.addWidget(self.createLabelBox(), 13, 0, 3, 6)
@@ -439,7 +396,6 @@ class RocketDisplayWindow(QMainWindow):
 
         Returns:
             list[tuple]: list of tuples with buttons and x, y grid locations.
-
         """
         buttonDisplay = []
         for key, w, x, y, z in keys:
@@ -468,7 +424,7 @@ class RocketDisplayWindow(QMainWindow):
     def updateStage(self):
         """Tries to update the stage."""
         if not self.aborted:
-            if not self.createConfBox("Stage Advancement", "Confirm: advance to next stage?"):
+            if not self.createConfBox("Stage Advancement", "Confirm: advance to next stage?", default=False):
                 return
             last = self.sm.update()
             if not last:
