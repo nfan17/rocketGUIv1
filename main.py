@@ -5,9 +5,11 @@ Author: Nick Fan
 Date: February 2023
 """
 
+import re
 import sys
 from PyQt6.QtWidgets import (
     QApplication,
+    QInputDialog,
     QGridLayout,
     QLabel,
     QMainWindow,
@@ -25,6 +27,11 @@ from utils import *
 
 MIN_SIZE = 600
 ICON_PATH = r"src\octoLogo"
+ERROR_ICON_P = "./src/errorIcon.png"
+
+WARNING = 0
+ERROR = 1
+MESSAGE_LABELS = ("Warning", "Error")
 
 LAUNCH_STATES = ("IDLE", "HIGH PRESSURE", "TANK HIGH PRESSURE", "FIRE")
 LEAK_ACCEPT_RATE = "1 PSI / Min"
@@ -40,6 +47,10 @@ PROCEED = "\nADVANCE STAGE\n"
 MARK_STEP = "\nMARK NEXT TASK\n"
 IGNITION_FAILURE = "IGNITION FAIL"
 OVERPRESSURE = "OVERPRESSURE"
+SETUP_SER = "SERIAL SETTINGS"
+SER_TOGGLE = "START SERIAL"
+SER_ON = "START SERIAL"
+SER_OFF = "STOP SERIAL"
 
 # Pin Map
 
@@ -215,21 +226,6 @@ class StateMachine:
         self.current = self.states[self.current].next
         return last
 
-class Clock:
-    """QLabel clock class to display self-updating label with time/date."""
-
-    def __init__(self, style: str) -> None:
-        self.dateTime = QLabel()
-        self.dateTime.setStyleSheet(style)
-        self.timer = QTimer()
-        self.updateTime()
-        self.timer.timeout.connect(self.updateTime)
-        self.timer.start(1000)
-    
-    def updateTime(self):
-        """Updates the time and date display."""
-        currentTime = QDateTime.currentDateTime().toString("      hh:mm:ss | MM/dd/yyyy")
-        self.dateTime.setText(currentTime)
 
 # MAIN WINDOW -------------------------------------------------------------------------------------------------|
 
@@ -261,6 +257,132 @@ class RocketDisplayWindow(QMainWindow):
         self.setCentralWidget(centralWidget)
 
         self.linkButtons()
+
+        self.serialSet = False
+        self.serialOn = False
+
+    # SERIAL FUNCTIONS
+
+    def threadingSetup(self) -> None:
+        """Sets up threading, serial worker and signals/slots.
+        
+        *Serial Window Core
+        """
+        self.serialThread = QThread()
+        self.serialConnection = self.setupConnection(self.port, self.baud)
+        self.serialLock = QMutex()
+        self.serialWorker = SerialWorker(self.serialConnection, self.serialLock, "")
+        self.serialWorker.moveToThread(self.serialThread)
+        self.serialThread.started.connect(self.serialWorker.run)
+        self.serialWorker.cleanup.connect(self.serialThread.quit)
+        self.serialWorker.error.connect(self.errorExit)
+        #self.serialWorker.msg.connect(self.displayControl)
+        self.serialThread.start()
+
+    def selectPort(self) -> bool:
+        """Checks for available ports and asks for a selection.
+
+        Returns:
+            bool: True setup is successful, False otherwise
+        
+        *Serial Window Core
+        """
+        ports = serial.tools.list_ports.comports()
+        if len(ports) < 1:
+            self.createConfBox(
+                "Serial Error",
+                "No COM ports available.\nPlease plug in devices before starting.",
+            )
+            return False
+        
+        warning = (
+            "ATTENTION:\nWhen selecting a port, look for \"Arduino\" or \"Serial-USB\" "
+            + "If you do not see an option like this, please cancel and check your USB connection."
+        )
+        conf = QMessageBox(
+            QMessageBox.Icon.Warning,
+            "Setup Confirmation",
+            warning,
+            QMessageBox.StandardButton.Ok | QMessageBox.StandardButton.Cancel,
+            self.centralWidget(),
+        )
+
+        conf.exec()
+
+        selection, ok = QInputDialog().getItem(
+            self.centralWidget(),
+            "COM select", 
+            "Select a port:",
+            [f"{desc}" for name, desc, hwid in ports],
+        )
+        if not ok:
+            return False
+
+        self.port = str(re.findall(r"COM[0-9]+", selection)[0])  # get port
+
+        return True
+
+    def selectBaud(self) -> bool:
+        """Asks for selection of a baudrate.
+
+        Returns:
+            bool: True setup is successful, False otherwise
+        """
+        selection, ok = QInputDialog().getItem(
+            self.centralWidget(),
+            "Baudrate select", 
+            "Select a baudrate:",
+            [str(rate) for rate in BAUDRATES],
+        )
+
+        if not ok:
+            return False
+        try:
+            self.baud = int(selection)
+        except ValueError:
+            error = QMessageBox(
+                QMessageBox.Icon.Critical,
+                "Setup Error",
+                "Setup error detected!",
+                QMessageBox.StandardButton.Ok | QMessageBox.StandardButton.Cancel,
+                self.centralWidget(),
+            )
+            error.exec()
+            return False
+        return True
+    
+    def setupSerial(self) -> None:
+        """Serial option selection."""
+        if not self.selectPort() or not self.selectBaud():
+            self.serialSet = False
+        else:
+            self.serialSet = True
+
+    def toggleSerial(self) -> None:
+        """Toggles serial connection on/off."""
+        if self.serialSet and not self.serialOn:
+            try:
+                self.serial = setupConnection(self.port, self.baud)
+                self.serialOn = True
+                self.buttons[SER_TOGGLE].setText(SER_OFF)
+            except serial.SerialException:
+                self.createConfBox(
+                    "Serial Error",
+                    "Serial connection could not be established.",
+                    QMessageBox.Icon.Critical
+                )
+        elif self.serialOn:
+            self.serial.close()
+            del self.serial
+            self.serialOn = False
+            self.buttons[SER_TOGGLE].setText(SER_ON)
+        else:
+            self.createConfBox("Serial Error", "Serial settings not complete.")
+
+    def errorExit(self) -> None:
+        """Starts exit sequence on handling of a serial exception."""
+        #self.createMessageBox(ERROR, "Serial exception detected! Program will now close.")
+        #self.close()
 
     def createLabelBox(self, message: str | None= None,
                 labelType: str | None= None,
@@ -328,13 +450,22 @@ class RocketDisplayWindow(QMainWindow):
         label.setLineWidth(1)
         return label
 
-    def createConfBox(self, title: str, message: str, default: bool=True) -> bool:
+    def createConfBox(self, title: str, message: str,
+            icon: QMessageBox.Icon=QMessageBox.Icon.Warning, default: bool=True) -> bool:
+        """Creates a confirmation box.
+        
+        Args:
+            title(str): title of the box window
+            message(str): the message to display
+            icon(QMessageBox.Icon): the icon for the window
+            default(bool): default button ok (True) or cancel (False)
+        """
         conf = QMessageBox(
-            QMessageBox.Icon.Warning,
-                title,
-                message,
-                QMessageBox.StandardButton.Ok | QMessageBox.StandardButton.Cancel,
-                self.centralWidget(),
+            icon,
+            title,
+            message,
+            QMessageBox.StandardButton.Ok | QMessageBox.StandardButton.Cancel,
+            self.centralWidget(),
         )
         if not default:
             conf.setDefaultButton(QMessageBox.StandardButton.Cancel)
@@ -378,13 +509,9 @@ class RocketDisplayWindow(QMainWindow):
 
         # middle, right column
         grid.addWidget(self.createLabelBox(), 1, 3, 13, 6)
-        grid.addWidget(self.createLabelBox(), 1, 9, 11, 3)
-        grid.addWidget(self.createLabelBox(), 12, 9, 2, 3)
 
-        # bottom row
-        #grid.addWidget(self.createLabelBox(), 13, 0, 3, 6)
-        #grid.addWidget(self.createLabelBox(), 13, 6, 3, 5)
-        #grid.addWidget(self.createLayoutBox([(self.clock.dateTime, 0, 0)]), 13, 11, 3, 1)
+        grid.addWidget(self.createLabelBox(), 1, 9, 11, 3)
+        grid.addWidget(self.createLayoutBox(self.createButtonSets([(SETUP_SER, 0, 0, 1, 1), (SER_ON, 0, 1, 1, 1)])), 12, 9, 2, 3)
 
         return grid
 
@@ -428,7 +555,11 @@ class RocketDisplayWindow(QMainWindow):
                 return
             last = self.sm.update()
             if not last:
-                self.createConfBox("Stage Advancement", "Incomplete tasks remaining, unable to advance.")
+                self.createConfBox(
+                    "Stage Advancement",
+                    "Incomplete tasks remaining, unable to advance.",
+                    QMessageBox.Icon.Critical
+                )
                 return
             if self.currentState <= len(self.mode) - 2 and not self.aborted:
                 self.currentState += 1
@@ -454,7 +585,8 @@ class RocketDisplayWindow(QMainWindow):
         Returns:
             bool: abortion confirmation status
         """
-        if self.createConfBox("Mission Abort Confirmation", confirmation, default=False):
+        if self.createConfBox("Mission Abort Confirmation",
+                confirmation, default=False):
             self.dynamicLabels[CURR_STATE].setText("<h1> MISSION ABORTED </h1>")
             self.aborted = True
             try:
@@ -496,6 +628,8 @@ class RocketDisplayWindow(QMainWindow):
         self.buttons[MARK_STEP].clicked.connect(self.updateTask)
         self.buttons[OVERPRESSURE].clicked.connect(self.abortOverpressure)
         self.buttons[IGNITION_FAILURE].clicked.connect(self.abortIgnitionFail)
+        self.buttons[SER_TOGGLE].clicked.connect(self.toggleSerial)
+        self.buttons[SETUP_SER].clicked.connect(self.setupSerial)
     
     def countDown(self) -> None:
         """Starts countdown"""

@@ -9,6 +9,9 @@ import serial
 import serial.tools.list_ports
 from PyQt6.QtCore import QMutex, QObject, pyqtSignal
 
+BAUDRATES = [9600, 115200]
+
+# CLASSES ------------------------------------------------------------------------|
 class SerialComm:
     """Serial Com Manager."""
 
@@ -140,3 +143,18 @@ class SerialWorker(QObject):
                 self.serialConnection.sendMessage(message)
                 self.mutex.unlock()
                 break
+
+# FUNCTIONS ----------------------------------------------------------------------|
+def setupConnection(selectedPort: str, baud: int) -> SerialComm:
+        """Sets up and returns a serial comm.
+
+        Args:
+            seletedPort(str): the selected COM port
+            baud(int): the desired baudrate
+        Returns:
+            SerialComm: a serial connection object
+        
+        *Serial Window Core
+        """
+        ser = SerialComm(selectedPort, baud)
+        return ser
