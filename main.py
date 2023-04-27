@@ -28,8 +28,7 @@ from utils import *
 
 
 MIN_SIZE = 600
-ICON_PATH = "./src/octoLogo"
-ERROR_ICON_P = "./src/errorIcon.png"
+ICON_PATH = "./src/rocketIcon.png"
 
 WARNING = 0
 ERROR = 1
