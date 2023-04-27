@@ -3,6 +3,7 @@
 """
 Author: Nick Fan
 Date: February 2023
+Description: Liquid Rocket Project Launch Control GUI prototype.
 """
 
 import re
@@ -466,11 +467,9 @@ class RocketDisplayWindow(QMainWindow):
         #self.updateDisplay(data)
 
     def serialError(self) -> None:
-        """Starts exit sequence on handling of a serial exception."""
+        """Displays error popup upon handling of a serial exception."""
         self.createConfBox("Serial Error", "Serial error detected! Please try again.", QMessageBox.Icon.Warning)
         self.toggleSerial()
-        #self.createMessageBox(ERROR, "Serial exception detected! Program will now close.")
-        #self.close()
     
     def strFormat(self, string: str) -> str:
         """Returns formatted string for monitor display.

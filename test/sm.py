@@ -78,6 +78,7 @@ def handler2():
     else:
         return ('state2', '')
 
+'''
 m = StateMachine()
 m.add_state('state1', handler1)
 m.add_state('state2', handler2)
@@ -92,3 +93,4 @@ try:
             break
 except KeyboardInterrupt:
     pass
+'''
