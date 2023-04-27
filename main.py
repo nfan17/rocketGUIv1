@@ -16,7 +16,8 @@ from PyQt6.QtWidgets import (
     QPushButton,
     QWidget,
     QFrame,
-    QMessageBox
+    QMessageBox,
+    QTextEdit,
 )
 
 from PyQt6.QtCore import Qt, QTimer, QDateTime, QThread, pyqtSlot
@@ -26,7 +27,7 @@ from utils import *
 
 
 MIN_SIZE = 600
-ICON_PATH = r"src\octoLogo"
+ICON_PATH = "./src/octoLogo"
 ERROR_ICON_P = "./src/errorIcon.png"
 
 WARNING = 0
@@ -56,6 +57,7 @@ SER_OFF = "STOP SERIAL"
 
 
 class RocketStates:
+    """Rocket state names and values."""
 
     # States
     IDLE = "Leak Checks:"
@@ -102,6 +104,7 @@ class RocketStates:
 
 
 class FireProcedure(QLabel):
+    """Fire procedure task list."""
 
     def __init__(self) -> None:
         super().__init__()
@@ -125,6 +128,15 @@ class FireProcedure(QLabel):
         self.setLayout(self.generalLayout)
 
     def addStage(self, name: str, tasks: dict) -> QGridLayout:
+        """Creates a layout for a new stage.
+        
+        Args:
+            name(str): name of the stage (RocketStates.<STAGE> enums)
+            tasks(str): dictionary of tasks (RocketStates.<STAGE>_TASKS enums)
+        
+        Returns:
+            QGridLayout: layout for the stage.
+        """
         layout = QGridLayout()
         header = QLabel(f"<h1> {name} </h1>")
         header.setStyleSheet(HEADER_STYLE)
@@ -142,9 +154,15 @@ class FireProcedure(QLabel):
             except KeyError:
                 self.tasks[name] = { task: t[1]}
             layout.addWidget(label, i + 1, 0, 1, 1)
+
         return layout
 
     def changeStatus(self, label: str, status: bool= True) -> None:
+        """Changes the status of a task.
+        
+        Args:
+            label(str): the label dictionary key
+        """
         color = "#00A891" if status else "white"
         try:
             if label in RocketStates.states:
@@ -152,18 +170,29 @@ class FireProcedure(QLabel):
             else:
                 fontSize = 13
                 self.tasks[self.currentStage][label] = status
+
             self.labels[label].setStyleSheet(
                 f"color: {color}; font-family: consolas; font-size: {fontSize}px; "
             )
         except KeyError:
             return
     
-    def idleTasks(self):
+    def idleTasks(self) -> tuple:
+        """Returns state and confirmation messages for idle tasks.
+        
+        Returns:
+            tuple: RocketStates.<STATE>, "<Confirmation message>"
+        """
         if not self.tasks[RocketStates.IDLE][RocketStates.COPV_OPEN]:
             return RocketStates.COPV_OPEN, "Confirm COPV open/Acceptable leak rate?"
         return RocketStates.NULL, "No more tasks, advance stage to continue."
 
     def highPressTasks(self):
+        """Returns state and confirmation messages for high press tasks.
+        
+        Returns:
+            tuple: RocketStates.<STATE>, "<Confirmation message>"
+        """
         if not self.tasks[RocketStates.HIGH_PRESS][RocketStates.KBOTTLE]:
             return RocketStates.KBOTTLE, "Confirm K-bottle has been opened?"
         if not self.tasks[RocketStates.HIGH_PRESS][RocketStates.COPV_EQ]:
@@ -171,6 +200,11 @@ class FireProcedure(QLabel):
         return RocketStates.NULL, "No more tasks, advance stage to continue."
 
     def tankHighPressTasks(self):
+        """Returns state and confirmation messages for tank high press tasks.
+        
+        Returns:
+            tuple: RocketStates.<STATE>, "<Confirmation message>"
+        """
         if not self.tasks[RocketStates.TANK_HP][RocketStates.COPV_CLOSE]:
             return RocketStates.COPV_CLOSE, "Confirm COPV SV is closed?"
         if not self.tasks[RocketStates.TANK_HP][RocketStates.TANKS_OPEN]:
@@ -178,6 +212,11 @@ class FireProcedure(QLabel):
         return RocketStates.NULL, "No more tasks, advance stage to continue."
 
     def fireTasks(self):
+        """Returns state and confirmation messages for fire tasks.
+        
+        Returns:
+            tuple: RocketStates.<STATE>, "<Confirmation message>"
+        """
         if not self.tasks[RocketStates.FIRE][RocketStates.FIRE_INIT]:
             return RocketStates.FIRE_INIT, "Confirm begin fire sequence?"
         return RocketStates.NULL, "No more tasks."
@@ -274,8 +313,8 @@ class RocketDisplayWindow(QMainWindow):
         self.serialWorker.moveToThread(self.serialThread)
         self.serialThread.started.connect(self.serialWorker.run)
         self.serialWorker.cleanup.connect(self.serialThread.quit)
-        self.serialWorker.error.connect(self.errorExit)
-        #self.serialWorker.msg.connect(self.displayControl)
+        self.serialWorker.error.connect(self.serialError)
+        self.serialWorker.msg.connect(self.displayControl)
         self.serialThread.start()
 
     def selectPort(self) -> bool:
@@ -372,20 +411,77 @@ class RocketDisplayWindow(QMainWindow):
                     QMessageBox.Icon.Critical
                 )
         elif self.serialOn:
+            self.serialOn = False
             self.serialWorker.program = False
             time.sleep(0.1)
             if self.serial.connection.is_open:
                 self.serial.close()
-            del self.serial
-            self.serialOn = False
             self.buttons[SER_TOGGLE].setText(SER_ON)
         else:
-            self.createConfBox("Serial Error", "Serial settings not configured.")
+            self.createConfBox(
+                "Serial Error",
+                "Serial settings not configured.",
+                QMessageBox.Icon.Critical,
+            )
+    
+    def displayPrint(self, string: str, reformat=True) -> None:
+        """Displays to monitor and logs data.
 
-    def errorExit(self) -> None:
+        Args:
+            string(str): the string to display and log
+            reformat(bool | None): add strFormat if True, otherwise do not
+        """
+        if reformat:
+            string = self.strFormat(string)
+        self.monitor.append(string)
+        self.monitor.verticalScrollBar().setValue(
+            self.monitor.verticalScrollBar().maximum()
+        )
+    
+    def updateDisplay(self, dataset: list) -> None:
+        """Updates display values in the window dictionaries.
+        
+        Args:
+            dataset(list): list of parsed data in the format destination, value
+        
+        *Serial Window Core
+        """
+        for dest, value in dataset:
+            try:
+                self.dynamicLabels[dest].update(value.strip())
+            except KeyError:
+                continue
+
+    @pyqtSlot(str)
+    def displayControl(self, string: str) -> None:
+        """Prints to display monitor, parses data, and updates live labels.
+
+        Args:
+            string(str): the incoming data
+        
+        *Serial Window Core
+        """
+        self.displayPrint(string)
+        #data = self.parseData(string)
+        #self.updateDisplay(data)
+
+    def serialError(self) -> None:
         """Starts exit sequence on handling of a serial exception."""
+        self.createConfBox("Serial Error", "Serial error detected! Please try again.", QMessageBox.Icon.Warning)
+        self.toggleSerial()
         #self.createMessageBox(ERROR, "Serial exception detected! Program will now close.")
         #self.close()
+    
+    def strFormat(self, string: str) -> str:
+        """Returns formatted string for monitor display.
+
+        Args:
+            string(str): the string to format
+
+        Returns:
+            str: the formatted string
+        """
+        return QDateTime.currentDateTime().toString(DATE_TIME_FORMAT) + string.strip()
 
     def createLabelBox(self, message: str | None= None,
                 labelType: str | None= None,
@@ -513,8 +609,14 @@ class RocketDisplayWindow(QMainWindow):
         # middle, right column
         grid.addWidget(self.createLabelBox(), 1, 3, 13, 6)
 
-        grid.addWidget(self.createLabelBox(), 1, 9, 11, 3)
-        grid.addWidget(self.createLayoutBox(self.createButtonSets([(SETUP_SER, 0, 0, 1, 1), (SER_ON, 0, 1, 1, 1)])), 12, 9, 2, 3)
+        self.monitor = QTextEdit()
+        self.monitor.setReadOnly(True)
+        self.monitor.setFrameStyle(QFrame.Shape.NoFrame)
+        self.monitor.setStyleSheet(f"background: {PRIMARY_H}; color: {DETAILING_H}")
+
+        grid.addWidget(self.createLabelBox(), 1, 9, 9, 3)
+        grid.addWidget(self.createLayoutBox(self.createButtonSets([(SETUP_SER, 0, 0, 1, 1), (SER_ON, 0, 1, 1, 1)])), 10, 9, 1, 3)
+        grid.addWidget(self.createLayoutBox([(self.monitor, 0, 0, 1, 1)]), 11, 9, 3, 3)
 
         return grid
 
@@ -536,7 +638,9 @@ class RocketDisplayWindow(QMainWindow):
         return buttonDisplay
 
     def advanceState(self) -> None:
-        """Advance current state."""
+        """Advance current state.
+        May be deprecated.
+        """
         # display
         if self.currentState <= len(self.mode) - 2 and not self.aborted:
             self.currentState += 1
@@ -568,13 +672,13 @@ class RocketDisplayWindow(QMainWindow):
                 self.currentState += 1
                 self.dynamicLabels[CURR_STATE].setText(f"<h1>STAGE: {self.mode[self.currentState]}")
                 self.dynamicLabels[CURR_STATE].setStyleSheet(HEADER_STYLE)
+            # ADD SAFETY HERE FOR COMPLETION OF ALL STAGES OR MOVE INTO AN IF STATEMENT
             self.procedure.changeStatus(last)
     
     def updateTask(self):
         """Tries to update a task."""
         if not self.aborted:
             task, msg = self.sm.states[self.sm.current].confirms()
-            print(task, msg)
             conf = self.createConfBox("Status Confirmation", msg, default=False)
             if conf and task != RocketStates.NULL:
                 self.procedure.changeStatus(task)
@@ -633,7 +737,7 @@ class RocketDisplayWindow(QMainWindow):
         self.buttons[IGNITION_FAILURE].clicked.connect(self.abortIgnitionFail)
         self.buttons[SER_TOGGLE].clicked.connect(self.toggleSerial)
         self.buttons[SETUP_SER].clicked.connect(self.setupSerial)
-    
+
     def countDown(self) -> None:
         """Starts countdown"""
         if not self.aborted:

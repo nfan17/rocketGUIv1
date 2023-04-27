@@ -2,4 +2,4 @@
 
 from .gui_serial import *  # serial
 from .styling import *  # styling/colors
-from .clock import Clock
+from .clock import Clock # clock

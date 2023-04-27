@@ -47,6 +47,8 @@ HEADER_STYLE = "color: white; font-family: consolas; font-size: 9px; "
 STAGE_FONT_WHITE = "color: white; font-family: consolas; font-size: 13px; "
 STAGE_FONT_BLUE = "color: #00A891; font-family: consolas; font-size: 13px; "
 
+DATE_TIME_FORMAT = "MM/dd/yyyy | hh:mm:ss:zzz -> "
+
 # PALETTE ----------------------------------------------------------------------|
 class DarkCyanPalette(QPalette):
     """Dark and Cyan Palette."""
