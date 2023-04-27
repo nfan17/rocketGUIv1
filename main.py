@@ -751,13 +751,9 @@ class RocketDisplayWindow(QMainWindow):
             self.countdown.timeout.connect(countSecond)
             self.countdown.start(1000)
 
-def main():
-    """Rocket Control GUI"""
+
+if __name__ == "__main__":
     app = QApplication(sys.argv)
     rocketDisplay = RocketDisplayWindow()
     rocketDisplay.showMaximized()
     sys.exit(app.exec())
-
-
-if __name__ == "__main__":
-    main()
