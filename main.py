@@ -57,6 +57,7 @@ SERIAL_SEND = "Send"
 
 # Pin Map
 COMMAND_LEN = 8
+MSG_PAD = lambda x : x + "0" * (8 - len(x))
 
 class RocketStates:
     """Rocket state names and values."""
@@ -336,7 +337,7 @@ class RocketDisplayWindow(QMainWindow):
             return False
         
         warning = (
-            "ATTENTION:\nWhen selecting a port, look for \"Arduino\" or \"Serial-USB\" "
+            "ATTENTION:\nWhen selecting a port, look for \"Serial-USB\" or your selected MCU platform."
             + "If you do not see an option like this, please cancel and check your USB connection."
         )
         conf = QMessageBox(
@@ -473,13 +474,12 @@ class RocketDisplayWindow(QMainWindow):
         *Serial Window Core
         """
         if self.serialSet and self.serialOn:
-            #command = self.serialEntry.toPlainText()
             command = self.serialEntry.text()
             if len(set(command)) < len(command):
                 self.createConfBox("Serial Message Warning", "Duplicate pin detected - please try again.")
                 return
             self.monitor.append(self.strFormat(f"Send: {command}"))
-            self.serialWorker.sendToggle(command + "0" * (COMMAND_LEN - len(command)))
+            self.serialWorker.sendToggle(MSG_PAD(command))    
         else:
             self.createConfBox("Serial Error", "Serial must be configured and on.", QMessageBox.Icon.Critical)
 
