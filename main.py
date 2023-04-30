@@ -19,6 +19,7 @@ from PyQt6.QtWidgets import (
     QFrame,
     QMessageBox,
     QTextEdit,
+    QLineEdit,
 )
 
 from PyQt6.QtCore import Qt, QTimer, QDateTime, QThread, pyqtSlot
@@ -52,9 +53,10 @@ SETUP_SER = "SERIAL SETTINGS"
 SER_TOGGLE = "START SERIAL"
 SER_ON = "START SERIAL"
 SER_OFF = "STOP SERIAL"
+SERIAL_SEND = "Send"
 
 # Pin Map
-
+COMMAND_LEN = 8
 
 class RocketStates:
     """Rocket state names and values."""
@@ -464,6 +466,22 @@ class RocketDisplayWindow(QMainWindow):
         self.displayPrint(string)
         #data = self.parseData(string)
         #self.updateDisplay(data)
+    
+    def sendMessage(self) -> None:
+        """Sends a specific message to toggle without starting a preset.
+        
+        *Serial Window Core
+        """
+        if self.serialSet and self.serialOn:
+            #command = self.serialEntry.toPlainText()
+            command = self.serialEntry.text()
+            if len(set(command)) < len(command):
+                self.createConfBox("Serial Message Warning", "Duplicate pin detected - please try again.")
+                return
+            self.monitor.append(self.strFormat(f"Send: {command}"))
+            self.serialWorker.sendToggle(command + "0" * (COMMAND_LEN - len(command)))
+        else:
+            self.createConfBox("Serial Error", "Serial must be configured and on.", QMessageBox.Icon.Critical)
 
     def serialError(self) -> None:
         """Displays error popup upon handling of a serial exception."""
@@ -607,16 +625,44 @@ class RocketDisplayWindow(QMainWindow):
         # middle, right column
         grid.addWidget(self.createLabelBox(), 1, 3, 13, 6)
 
-        self.monitor = QTextEdit()
-        self.monitor.setReadOnly(True)
-        self.monitor.setFrameStyle(QFrame.Shape.NoFrame)
-        self.monitor.setStyleSheet(f"background: {PRIMARY_H}; color: {DETAILING_H}")
+        
 
         grid.addWidget(self.createLabelBox(), 1, 9, 9, 3)
         grid.addWidget(self.createLayoutBox(self.createButtonSets([(SETUP_SER, 0, 0, 1, 1), (SER_ON, 0, 1, 1, 1)])), 10, 9, 1, 3)
-        grid.addWidget(self.createLayoutBox([(self.monitor, 0, 0, 1, 1)]), 11, 9, 3, 3)
+        grid.addWidget(self.createLayoutBox(self.createSerialLayout()), 11, 9, 3, 3)
 
         return grid
+
+    def createSerialLayout(self) -> list:
+        """Creates and returns items of the serial setup for a layoutBox."""
+        # Serial monitor box
+        self.monitor = QTextEdit()
+        self.monitor.setReadOnly(True)
+        self.monitor.setFrameStyle(QFrame.Shape.NoFrame)
+        self.monitor.setStyleSheet(COLOR_CSS)
+
+        '''
+        self.serialEntry = QTextEdit()
+        self.serialEntry.setFrameStyle(QFrame.Shape.Panel)
+        self.serialEntry.setMaximumHeight(LINE_HEIGHT)
+        self.serialEntry.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.serialEntry.setStyleSheet(COLOR_CSS + FONT_CSS)
+        '''
+        # Message entry line
+        self.serialEntry = QLineEdit()
+        self.serialEntry.setStyleSheet(COLOR_CSS + FONT_CSS)
+        self.serialEntry.setMaximumHeight(LINE_HEIGHT)
+        
+        # Send button
+        self.buttons[SERIAL_SEND] = QPushButton(SERIAL_SEND)
+        self.buttons[SERIAL_SEND].setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.buttons[SERIAL_SEND].setStyleSheet(BUTTON_STYLE)
+
+        return [(
+            self.serialEntry, 0, 0, 1, 1),
+            (self.buttons[SERIAL_SEND], 0, 1, 1, 1),
+            (self.monitor, 1, 0, 1, 2)
+        ]
 
     def createButtonSets(self, keys: list[tuple]) -> list[tuple]:
         """Generate status control buttons.
@@ -735,6 +781,7 @@ class RocketDisplayWindow(QMainWindow):
         self.buttons[IGNITION_FAILURE].clicked.connect(self.abortIgnitionFail)
         self.buttons[SER_TOGGLE].clicked.connect(self.toggleSerial)
         self.buttons[SETUP_SER].clicked.connect(self.setupSerial)
+        self.buttons[SERIAL_SEND].clicked.connect(self.sendMessage)
 
     def countDown(self) -> None:
         """Starts countdown"""

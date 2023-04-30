@@ -17,6 +17,11 @@ DETAILING_H = "#00A891"
 #DETAILING = QColor(48, 170, 170) # lighter blue
 SECONDARY = WHITE
 
+COLOR_CSS = f"background: {PRIMARY_H}; color: {DETAILING_H}; "
+FONT_CSS = "font-family: consolas; "
+
+LINE_HEIGHT = 25
+
 BUTTON_STYLE = (
     """
     QPushButton {
