@@ -33,10 +33,6 @@ MIN_SIZE = 630
 ICON_PATH = "./src/rocketIcon.png"
 WIRE_DIAGRAM = "./src/wireDiagWhite.svg"
 
-WARNING = 0
-ERROR = 1
-MESSAGE_LABELS = ("Warning", "Error")
-
 LAUNCH_STATES = ("IDLE", "HIGH PRESSURE", "TANK HIGH PRESSURE", "FIRE")
 LEAK_ACCEPT_RATE = "1 PSI / Min"
 
@@ -45,6 +41,8 @@ DIAGRAM_LABEL = "D_Label"
 STATUS_LABEL = "Status"
 CURR_STATE = "StateDisplay"
 ABORT = "Abort"
+SV = "SV"
+PT = "PT"
 
 # Button Map
 PROCEED = "\nADVANCE STAGE\n"
@@ -661,13 +659,6 @@ class RocketDisplayWindow(QMainWindow):
         self.monitor.setFrameStyle(QFrame.Shape.NoFrame)
         self.monitor.setStyleSheet(COLOR_CSS)
 
-        '''
-        self.serialEntry = QTextEdit()
-        self.serialEntry.setFrameStyle(QFrame.Shape.Panel)
-        self.serialEntry.setMaximumHeight(LINE_HEIGHT)
-        self.serialEntry.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        self.serialEntry.setStyleSheet(COLOR_CSS + FONT_CSS)
-        '''
         # Message entry line
         self.serialEntry = QLineEdit()
         self.serialEntry.setStyleSheet(COLOR_CSS + FONT_CSS)
@@ -698,8 +689,6 @@ class RocketDisplayWindow(QMainWindow):
         image.setGeometry(0, 0, 420, 560)
 
         # data
-        SV = "SV"
-        PT = "PT"
         for i in range(1, 10):
             name = SV + str(i)
             self.dynamicLabels[name] = QLabel(DISP_FORMAT(name, "C"))
