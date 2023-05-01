@@ -55,9 +55,15 @@ SER_ON = "START SERIAL"
 SER_OFF = "STOP SERIAL"
 SERIAL_SEND = "Send"
 
-# Pin Map
+# Pins
 COMMAND_LEN = 8
 MSG_PAD = lambda x : x + "0" * (8 - len(x))
+
+# Files
+DATE = QDateTime.currentDateTime().toString("MM-dd-yy")
+START_TIME = QDateTime.currentDateTime().toString("MM-dd-yy-hh-mm")
+SYS_LOG_FILE = f"./log/{DATE}.txt"
+
 
 class RocketStates:
     """Rocket state names and values."""
@@ -224,6 +230,7 @@ class FireProcedure(QLabel):
             return RocketStates.FIRE_INIT, "Confirm begin fire sequence?"
         return RocketStates.NULL, "No more tasks."
 
+
 class StateMachine:
     """State machine for launch procedure steps."""
 
@@ -302,6 +309,11 @@ class RocketDisplayWindow(QMainWindow):
 
         self.serialSet = False
         self.serialOn = False
+
+        self.displayPrint(
+            "NEW SESSION: " + START_TIME,
+            reformat=False
+        )
 
     # SERIAL FUNCTIONS
 
@@ -440,6 +452,8 @@ class RocketDisplayWindow(QMainWindow):
         self.monitor.verticalScrollBar().setValue(
             self.monitor.verticalScrollBar().maximum()
         )
+        with open(SYS_LOG_FILE, "a") as sysLog:
+            sysLog.write(string + "\n")
     
     def updateDisplay(self, dataset: list) -> None:
         """Updates display values in the window dictionaries.
@@ -467,7 +481,7 @@ class RocketDisplayWindow(QMainWindow):
         self.displayPrint(string)
         #data = self.parseData(string)
         #self.updateDisplay(data)
-    
+
     def sendMessage(self) -> None:
         """Sends a specific message to toggle without starting a preset.
         
@@ -478,8 +492,8 @@ class RocketDisplayWindow(QMainWindow):
             if len(set(command)) < len(command):
                 self.createConfBox("Serial Message Warning", "Duplicate pin detected - please try again.")
                 return
-            self.monitor.append(self.strFormat(f"Send: {command}"))
-            self.serialWorker.sendToggle(MSG_PAD(command))    
+            self.displayPrint(f"Send: {command}")
+            self.serialWorker.sendToggle(MSG_PAD(command))
         else:
             self.createConfBox("Serial Error", "Serial must be configured and on.", QMessageBox.Icon.Critical)
 
