@@ -59,6 +59,10 @@ SERIAL_SEND = "Send"
 COMMAND_LEN = 8
 MSG_PAD = lambda x : x + "0" * (8 - len(x))
 DISP_FORMAT = lambda name, val : f"{name}: {val}"
+PRESSURE_TAG = ""  # no tag rn
+PRESSURE_SEP = ", "
+VALVE_TAG = "Toggle PIN"
+VALVE_SEP = " "
 
 # Files
 DATE = QDateTime.currentDateTime().toString("MM-dd-yy")
@@ -456,6 +460,27 @@ class RocketDisplayWindow(QMainWindow):
         with open(SYS_LOG_FILE, "a") as sysLog:
             sysLog.write(string + "\n")
     
+    def parseData(self, data: str) -> list[tuple]:
+        """Parses incoming data to destination/value pairs.
+
+        Args:
+            data(str): the incoming data
+        
+        Returns:
+            list[tuple]: a list of tuples with destination/value pairs
+        
+        *Serial Window Core
+        """
+        if VALVE_TAG in data:
+            pin, value = data.strip(VALVE_TAG).split(VALVE_SEP)
+            return [(SV + pin, value)]
+        if PRESSURE_SEP in data:
+            readings = []
+            for i, val in enumerate(data.split(PRESSURE_SEP)):
+                readings.append((f"{PT}{i + 1}", val))
+            return readings
+        return []
+    
     def updateDisplay(self, dataset: list) -> None:
         """Updates display values in the window dictionaries.
         
@@ -466,7 +491,16 @@ class RocketDisplayWindow(QMainWindow):
         """
         for dest, value in dataset:
             try:
-                self.dynamicLabels[dest].update(value.strip())
+                if SV in dest:
+                    status = int(value.strip())
+                    if status:
+                        self.dynamicLabels[dest].setStyleSheet(FONT_CSS + "color: green; ")
+                        self.dynamicLabels[dest].setText(DISP_FORMAT(dest, "O"))
+                    else:
+                        self.dynamicLabels[dest].setStyleSheet(FONT_CSS + "color: white; ")
+                        self.dynamicLabels[dest].setText(DISP_FORMAT(dest, "C"))
+                elif PT in dest:
+                    self.dynamicLabels[dest].setText(DISP_FORMAT(dest, value.strip()))
             except KeyError:
                 continue
 
@@ -480,8 +514,8 @@ class RocketDisplayWindow(QMainWindow):
         *Serial Window Core
         """
         self.displayPrint(string)
-        #data = self.parseData(string)
-        #self.updateDisplay(data)
+        data = self.parseData(string)
+        self.updateDisplay(data)
 
     def sendMessage(self) -> None:
         """Sends a specific message to toggle without starting a preset.
