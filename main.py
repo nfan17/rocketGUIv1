@@ -67,7 +67,8 @@ VALVE_SEP = " "
 # Files
 DATE = QDateTime.currentDateTime().toString("MM-dd-yy")
 START_TIME = QDateTime.currentDateTime().toString("MM-dd-yy-hh-mm")
-SYS_LOG_FILE = f"./log/{DATE}.txt"
+DATA_LOG_FILE = f"./log/data/{DATE}.txt"
+SYS_LOG_FILE = f"./log/sys/{DATE}.txt"
 
 
 class RocketStates:
@@ -315,10 +316,14 @@ class RocketDisplayWindow(QMainWindow):
         self.serialSet = False
         self.serialOn = False
 
+        # log start
+        start = "NEW SESSION: " + START_TIME
         self.displayPrint(
-            "NEW SESSION: " + START_TIME,
+            start,
             reformat=False
         )
+        with open(DATA_LOG_FILE, 'a') as datalog:
+            datalog.write(start + '\n')
 
     # SERIAL FUNCTIONS
 
@@ -444,6 +449,20 @@ class RocketDisplayWindow(QMainWindow):
                 QMessageBox.Icon.Critical,
             )
     
+    def closeEvent(self, event) -> None:
+        """Adds additional functions when closing window."""
+        self.serialWorker.program = False
+        time.sleep(0.1)
+        if self.serial.connection.is_open:
+            self.serial.close()
+        with open(SYS_LOG_FILE, "a") as sysLog, open(DATA_LOG_FILE, "a") as dataLog:
+            sysLog.write(
+                "---------------------------------------------------------------------------\n"
+            )
+            dataLog.write(
+                "---------------------------------------------------------------------------\n"
+            )
+
     def displayPrint(self, string: str, reformat=True) -> None:
         """Displays to monitor and logs data.
 
@@ -459,7 +478,7 @@ class RocketDisplayWindow(QMainWindow):
         )
         with open(SYS_LOG_FILE, "a") as sysLog:
             sysLog.write(string + "\n")
-    
+
     def parseData(self, data: str) -> list[tuple]:
         """Parses incoming data to destination/value pairs.
 
@@ -480,7 +499,7 @@ class RocketDisplayWindow(QMainWindow):
                 readings.append((f"{PT}{i + 1}", val))
             return readings
         return []
-    
+
     def updateDisplay(self, dataset: list) -> None:
         """Updates display values in the window dictionaries.
         
@@ -513,7 +532,8 @@ class RocketDisplayWindow(QMainWindow):
         
         *Serial Window Core
         """
-        self.displayPrint(string)
+        with open(DATA_LOG_FILE, "a") as sysLog:
+            sysLog.write(self.strFormat(string) + '\n')
         data = self.parseData(string)
         self.updateDisplay(data)
 
