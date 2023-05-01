@@ -8,26 +8,15 @@ Description: Liquid Rocket Project Launch Control GUI prototype.
 
 import re
 import sys
-from PyQt6.QtWidgets import (
-    QApplication,
-    QInputDialog,
-    QGridLayout,
-    QLabel,
-    QMainWindow,
-    QPushButton,
-    QWidget,
-    QFrame,
-    QMessageBox,
-    QTextEdit,
-    QLineEdit,
-)
 
-from PyQt6.QtCore import Qt, QTimer, QDateTime, QThread, pyqtSlot
+from PyQt6.QtCore import QDateTime, Qt, QThread, QTimer, pyqtSlot
 from PyQt6.QtGui import QIcon
 from PyQt6.QtSvgWidgets import QSvgWidget
+from PyQt6.QtWidgets import (QApplication, QFrame, QGridLayout, QInputDialog,
+                             QLabel, QLineEdit, QMainWindow, QMessageBox,
+                             QPushButton, QTextEdit, QWidget)
 
 from utils import *
-
 
 MIN_SIZE = 630
 ICON_PATH = "./src/rocketIcon.png"
