@@ -451,10 +451,11 @@ class RocketDisplayWindow(QMainWindow):
 
     def closeEvent(self, event) -> None:
         """Adds additional functions when closing window."""
-        self.serialWorker.program = False
-        time.sleep(0.1)
-        if self.serial.connection.is_open:
-            self.serial.close()
+        if self.serialOn:
+            self.serialWorker.program = False
+            time.sleep(0.1)
+            if self.serial.connection.is_open:
+                self.serial.close()
         with open(SYS_LOG_FILE, "a") as sysLog, open(DATA_LOG_FILE, "a") as dataLog:
             sysLog.write(
                 "---------------------------------------------------------------------------\n"
@@ -516,12 +517,12 @@ class RocketDisplayWindow(QMainWindow):
                         self.dynamicLabels[dest].setStyleSheet(
                             FONT_CSS + "color: green; "
                         )
-                        self.dynamicLabels[dest].setText(DISP_FORMAT(dest, "O"))
+                        self.dynamicLabels[dest].setText(DISP_FORMAT(dest, "OPEN"))
                     else:
                         self.dynamicLabels[dest].setStyleSheet(
                             FONT_CSS + "color: white; "
                         )
-                        self.dynamicLabels[dest].setText(DISP_FORMAT(dest, "C"))
+                        self.dynamicLabels[dest].setText(DISP_FORMAT(dest, "CLOSE"))
                 elif PT in dest:
                     self.dynamicLabels[dest].setText(DISP_FORMAT(dest, value.strip()))
             except KeyError:
@@ -739,9 +740,6 @@ class RocketDisplayWindow(QMainWindow):
             2,
             3,
         )
-        # grid.addWidget(self.createLayoutBox([(self.clock.dateTime, 0, 0)]), 12, 0, 2, 3)
-        # grid.addWidget(self.createLayoutBox([(self.states, 0, 0, 1, 1)]), 4, 0, 8, 3)
-        # grid.addWidget(self.createLayoutBox(self.createButtonSets([(PROCEED, 0, 0, 1, 1), (MARK_STEP, 0, 1, 1, 1)])), 2, 0, 2, 3)
         grid.addWidget(
             self.createLabelBox("<h1>ABORT MISSION: </h1>", ABORT, HEADER_STYLE),
             12,
@@ -834,50 +832,69 @@ class RocketDisplayWindow(QMainWindow):
         # data
         for i in range(1, 10):
             name = SV + str(i)
-            self.dynamicLabels[name] = QLabel(DISP_FORMAT(name, "C"))
+            self.dynamicLabels[name] = QLabel(DISP_FORMAT(name, "CLOSE"))
             self.dynamicLabels[name].setStyleSheet("color: white; " + FONT_CSS)
+            #self.dynamicLabels[name].setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         for i in range(1, 5):
             name = PT + str(i)
             self.dynamicLabels[name] = QLabel(DISP_FORMAT(name, "n/a"))
             self.dynamicLabels[name].setStyleSheet("color: white; " + FONT_CSS)
+            #self.dynamicLabels[name].setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         # boxes
+        t1 = QLabel("N2 GSE")
+        t1.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
         box1 = self.createLayoutBox(
             [
-                (self.dynamicLabels[SV + "1"], 0, 0, 1, 1),
-                (self.dynamicLabels[SV + "2"], 1, 0, 1, 1),
+                (t1, 0, 0, 1, 1),
+                (self.dynamicLabels[SV + "1"], 1, 0, 1, 1),
+                (self.dynamicLabels[SV + "2"], 2, 0, 1, 1),
             ]
         )
 
+        t2 = QLabel("High Press")
+        t2.setAlignment(Qt.AlignmentFlag.AlignCenter)
         box2 = self.createLayoutBox(
             [
-                (self.dynamicLabels[PT + "1"], 0, 0, 1, 1),
-                (self.dynamicLabels[SV + "3"], 1, 0, 1, 1),
+                (t2, 0, 0, 1, 1),
+                (self.dynamicLabels[PT + "1"], 1, 0, 1, 1),
+                (self.dynamicLabels[SV + "3"], 2, 0, 1, 1),
             ]
         )
 
+        t3 = QLabel("Ox/N2O GSE")
+        t3.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        t3.setStyleSheet(FONT_CSS + f"font-size: 11px; color: {DETAILING_H};")
         box3 = self.createLayoutBox(
             [
-                (self.dynamicLabels[PT + "2"], 0, 0, 1, 1),
-                (self.dynamicLabels[SV + "5"], 1, 0, 1, 1),
-                (self.dynamicLabels[SV + "6"], 2, 0, 1, 1),
+                (t3, 0, 0, 1, 1),
+                (self.dynamicLabels[PT + "2"], 1, 0, 1, 1),
+                (self.dynamicLabels[SV + "5"], 2, 0, 1, 1),
+                (self.dynamicLabels[SV + "6"], 3, 0, 1, 1),
             ]
         )
 
+        t4 = QLabel("Fuel")
+        t4.setAlignment(Qt.AlignmentFlag.AlignCenter)
         box4 = self.createLayoutBox(
             [
-                (self.dynamicLabels[PT + "3"], 0, 0, 1, 1),
-                (self.dynamicLabels[SV + "4"], 1, 0, 1, 1),
-                (self.dynamicLabels[SV + "7"], 2, 0, 1, 1),
+                (t4, 0, 0, 1, 1),
+                (self.dynamicLabels[PT + "3"], 1, 0, 1, 1),
+                (self.dynamicLabels[SV + "4"], 2, 0, 1, 1),
+                (self.dynamicLabels[SV + "7"], 3, 0, 1, 1),
             ]
         )
 
+        t5 = QLabel("Main Valve")
+        t5.setAlignment(Qt.AlignmentFlag.AlignCenter)
         box5 = self.createLayoutBox(
             [
-                (self.dynamicLabels[SV + "8"], 0, 0, 1, 1),
-                (self.dynamicLabels[SV + "9"], 1, 0, 1, 1),
-                (self.dynamicLabels[PT + "4"], 2, 0, 1, 1),
+                (t5, 0, 0, 1, 1),
+                (self.dynamicLabels[SV + "8"], 1, 0, 1, 1),
+                (self.dynamicLabels[SV + "9"], 2, 0, 1, 1),
+                (self.dynamicLabels[PT + "4"], 3, 0, 1, 1),
             ]
         )
 
@@ -885,9 +902,9 @@ class RocketDisplayWindow(QMainWindow):
         labelLayout.addWidget(imageLabel, 0, 2, 13, 6)
         labelLayout.addWidget(box1, 1, 0, 2, 1)
         labelLayout.addWidget(box2, 1, 6, 2, 1)
-        labelLayout.addWidget(box3, 5, 0, 2, 1)
-        labelLayout.addWidget(box4, 5, 7, 2, 1)
-        labelLayout.addWidget(box5, 10, 6, 2, 1)
+        labelLayout.addWidget(box3, 5, 0, 3, 1)
+        labelLayout.addWidget(box4, 5, 7, 3, 1)
+        labelLayout.addWidget(box5, 10, 6, 3, 1)
 
         return frame
 
