@@ -24,12 +24,14 @@ from PyQt6.QtWidgets import (
 
 from PyQt6.QtCore import Qt, QTimer, QDateTime, QThread, pyqtSlot
 from PyQt6.QtGui import QIcon
+from PyQt6.QtSvgWidgets import QSvgWidget
 
 from utils import *
 
 
-MIN_SIZE = 600
+MIN_SIZE = 630
 ICON_PATH = "./src/rocketIcon.png"
+WIRE_DIAGRAM = "./src/wireDiagWhite.svg"
 
 WARNING = 0
 ERROR = 1
@@ -58,6 +60,7 @@ SERIAL_SEND = "Send"
 # Pins
 COMMAND_LEN = 8
 MSG_PAD = lambda x : x + "0" * (8 - len(x))
+DISP_FORMAT = lambda name, val : f"{name}: {val}"
 
 # Files
 DATE = QDateTime.currentDateTime().toString("MM-dd-yy")
@@ -620,12 +623,7 @@ class RocketDisplayWindow(QMainWindow):
         grid.addWidget(self.createLayoutBox([(self.clock.dateTime, 0, 0, 1, 1)]), 0, 9, 1, 3)
 
         # left column
-        self.procedure = FireProcedure()
-        self.sm = StateMachine(self.procedure)
-        self.sm.addState(RocketStates.IDLE, RocketStates.HIGH_PRESS, self.procedure.idleTasks)
-        self.sm.addState(RocketStates.HIGH_PRESS, RocketStates.TANK_HP, self.procedure.highPressTasks)
-        self.sm.addState(RocketStates.TANK_HP, RocketStates.FIRE, self.procedure.tankHighPressTasks)
-        self.sm.addState(RocketStates.FIRE, None, self.procedure.fireTasks)
+        self.createProcedure()
 
         grid.addWidget(self.createLabelBox(f"<h1>STAGE: {self.mode[self.currentState]}</h1>", CURR_STATE, HEADER_STYLE), 1, 0, 1, 3)
         grid.addWidget(self.createLayoutBox([(self.procedure, 0, 0, 1, 1)]), 2, 0, 8, 3)
@@ -636,16 +634,24 @@ class RocketDisplayWindow(QMainWindow):
         grid.addWidget(self.createLabelBox(f"<h1>ABORT MISSION: </h1>", ABORT, HEADER_STYLE), 12, 0, 1, 3)
         grid.addWidget(self.createLayoutBox(self.createButtonSets([(OVERPRESSURE, 0, 0, 1, 1), (IGNITION_FAILURE, 0, 1, 1, 1)])), 13, 0, 1, 3)
 
-        # middle, right column
-        grid.addWidget(self.createLabelBox(), 1, 3, 13, 6)
+        # middle column
+        grid.addWidget(self.createWireDiagram(), 1, 3, 13, 6)
 
-        
-
+        # right column
         grid.addWidget(self.createLabelBox(), 1, 9, 9, 3)
         grid.addWidget(self.createLayoutBox(self.createButtonSets([(SETUP_SER, 0, 0, 1, 1), (SER_ON, 0, 1, 1, 1)])), 10, 9, 1, 3)
         grid.addWidget(self.createLayoutBox(self.createSerialLayout()), 11, 9, 3, 3)
 
         return grid
+    
+    def createProcedure(self) -> None:
+        """Creates procedure."""
+        self.procedure = FireProcedure()
+        self.sm = StateMachine(self.procedure)
+        self.sm.addState(RocketStates.IDLE, RocketStates.HIGH_PRESS, self.procedure.idleTasks)
+        self.sm.addState(RocketStates.HIGH_PRESS, RocketStates.TANK_HP, self.procedure.highPressTasks)
+        self.sm.addState(RocketStates.TANK_HP, RocketStates.FIRE, self.procedure.tankHighPressTasks)
+        self.sm.addState(RocketStates.FIRE, None, self.procedure.fireTasks)
 
     def createSerialLayout(self) -> list:
         """Creates and returns items of the serial setup for a layoutBox."""
@@ -677,6 +683,71 @@ class RocketDisplayWindow(QMainWindow):
             (self.buttons[SERIAL_SEND], 0, 1, 1, 1),
             (self.monitor, 1, 0, 1, 2)
         ]
+    
+    def createWireDiagram(self) -> QLabel:
+        """Creates wire diagram."""
+        frame = QLabel()
+        frame.setFrameStyle(QFrame.Shape.Panel)
+        frame.setLineWidth(1)
+        labelLayout = QGridLayout(frame)
+
+        # image
+        imageLabel = QLabel()
+        imageLabel.setFixedSize(420, 560)
+        image = QSvgWidget(WIRE_DIAGRAM, imageLabel)
+        image.setGeometry(0, 0, 420, 560)
+
+        # data
+        SV = "SV"
+        PT = "PT"
+        for i in range(1, 10):
+            name = SV + str(i)
+            self.dynamicLabels[name] = QLabel(DISP_FORMAT(name, "C"))
+            self.dynamicLabels[name].setStyleSheet("color: white; " + FONT_CSS)
+        
+        for i in range(1, 5):
+            name = PT + str(i)
+            self.dynamicLabels[name] = QLabel(DISP_FORMAT(name, "n/a"))
+            self.dynamicLabels[name].setStyleSheet("color: white; " + FONT_CSS)
+        
+        # boxes
+        box1 = self.createLayoutBox([
+            (self.dynamicLabels[SV + "1"], 0, 0, 1, 1),
+            (self.dynamicLabels[SV + "2"], 1, 0, 1, 1),
+        ])
+
+        box2 = self.createLayoutBox([
+            (self.dynamicLabels[PT + "1"], 0, 0, 1, 1),
+            (self.dynamicLabels[SV + "3"], 1, 0, 1, 1),
+        ])
+
+        box3 = self.createLayoutBox([
+            (self.dynamicLabels[PT + "2"], 0, 0, 1, 1),
+            (self.dynamicLabels[SV + "5"], 1, 0, 1, 1),
+            (self.dynamicLabels[SV + "6"], 2, 0, 1, 1),
+        ])
+
+        box4 = self.createLayoutBox([
+            (self.dynamicLabels[PT + "3"], 0, 0, 1, 1),
+            (self.dynamicLabels[SV + "4"], 1, 0, 1, 1),
+            (self.dynamicLabels[SV + "7"], 2, 0, 1, 1),
+        ])
+
+        box5 = self.createLayoutBox([
+            (self.dynamicLabels[SV + "8"], 0, 0, 1, 1),
+            (self.dynamicLabels[SV + "9"], 1, 0, 1, 1),
+            (self.dynamicLabels[PT + "4"], 2, 0, 1, 1),
+        ])
+
+        #layout
+        labelLayout.addWidget(imageLabel, 0, 2, 13, 6)
+        labelLayout.addWidget(box1, 1, 0, 2, 1)
+        labelLayout.addWidget(box2, 1, 6, 2, 1)
+        labelLayout.addWidget(box3, 5, 0, 2, 1)
+        labelLayout.addWidget(box4, 5, 7, 2, 1)
+        labelLayout.addWidget(box5, 10, 6, 2, 1)
+
+        return frame
 
     def createButtonSets(self, keys: list[tuple]) -> list[tuple]:
         """Generate status control buttons.
