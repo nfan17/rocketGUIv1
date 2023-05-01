@@ -57,8 +57,8 @@ SERIAL_SEND = "Send"
 
 # Pins
 COMMAND_LEN = 8
-MSG_PAD = lambda x : x + "0" * (8 - len(x))
-DISP_FORMAT = lambda name, val : f"{name}: {val}"
+MSG_PAD = lambda x: x + "0" * (8 - len(x))
+DISP_FORMAT = lambda name, val: f"{name}: {val}"
 PRESSURE_TAG = ""  # no tag rn
 PRESSURE_SEP = ", "
 VALVE_TAG = "Toggle PIN"
@@ -89,8 +89,7 @@ class RocketStates:
     # Idle Tasks
     COPV_OPEN = "COPV_O"
     COPV_OPEN_MSG = (
-        "-> Open COPV SV until PTs stabilize\n"
-        + "  ->  Acceptable rate = 1 PSI / Min"
+        "-> Open COPV SV until PTs stabilize\n" + "  ->  Acceptable rate = 1 PSI / Min"
     )
 
     # High Pressure Tasks
@@ -110,10 +109,13 @@ class RocketStates:
     FIRE_INIT_MSG = "-> Start fire sequence"
 
     # Tasks
-    IDLE_TASKS = { COPV_OPEN: (COPV_OPEN_MSG, False) }
-    HP_TASKS = { KBOTTLE: (KBOTTLE_MSG, False), COPV_EQ: (COPV_EQ_MSG, False) }
-    TANK_HP_TASKS = { COPV_CLOSE: (COPV_CLOSE_MSG, False), TANKS_OPEN: (TANKS_OPEN_MSG, False) }
-    FIRE_TASKS = { FIRE_INIT: (FIRE_INIT_MSG, False) }
+    IDLE_TASKS = {COPV_OPEN: (COPV_OPEN_MSG, False)}
+    HP_TASKS = {KBOTTLE: (KBOTTLE_MSG, False), COPV_EQ: (COPV_EQ_MSG, False)}
+    TANK_HP_TASKS = {
+        COPV_CLOSE: (COPV_CLOSE_MSG, False),
+        TANKS_OPEN: (TANKS_OPEN_MSG, False),
+    }
+    FIRE_TASKS = {FIRE_INIT: (FIRE_INIT_MSG, False)}
 
     NULL = None
 
@@ -129,10 +131,18 @@ class FireProcedure(QLabel):
 
         # set stages ------------------------------------------------------------------------------|
         self.stages = {
-            RocketStates.IDLE: self.addStage(RocketStates.IDLE, RocketStates.IDLE_TASKS),
-            RocketStates.HIGH_PRESS: self.addStage(RocketStates.HIGH_PRESS, RocketStates.HP_TASKS),
-            RocketStates.TANK_HP: self.addStage(RocketStates.TANK_HP, RocketStates.TANK_HP_TASKS),
-            RocketStates.FIRE: self.addStage(RocketStates.FIRE, RocketStates.FIRE_TASKS),
+            RocketStates.IDLE: self.addStage(
+                RocketStates.IDLE, RocketStates.IDLE_TASKS
+            ),
+            RocketStates.HIGH_PRESS: self.addStage(
+                RocketStates.HIGH_PRESS, RocketStates.HP_TASKS
+            ),
+            RocketStates.TANK_HP: self.addStage(
+                RocketStates.TANK_HP, RocketStates.TANK_HP_TASKS
+            ),
+            RocketStates.FIRE: self.addStage(
+                RocketStates.FIRE, RocketStates.FIRE_TASKS
+            ),
         }
         # -----------------------------------------------------------------------------------------|
 
@@ -144,11 +154,11 @@ class FireProcedure(QLabel):
 
     def addStage(self, name: str, tasks: dict) -> QGridLayout:
         """Creates a layout for a new stage.
-        
+
         Args:
             name(str): name of the stage (RocketStates.<STAGE> enums)
             tasks(str): dictionary of tasks (RocketStates.<STAGE>_TASKS enums)
-        
+
         Returns:
             QGridLayout: layout for the stage.
         """
@@ -165,16 +175,16 @@ class FireProcedure(QLabel):
             label.setStyleSheet(HEADER_STYLE + "font-size: 13px")
             self.labels[task] = label
             try:
-                self.tasks[name].update({ task: t[1] })
+                self.tasks[name].update({task: t[1]})
             except KeyError:
-                self.tasks[name] = { task: t[1]}
+                self.tasks[name] = {task: t[1]}
             layout.addWidget(label, i + 1, 0, 1, 1)
 
         return layout
 
-    def changeStatus(self, label: str, status: bool= True) -> None:
+    def changeStatus(self, label: str, status: bool = True) -> None:
         """Changes the status of a task.
-        
+
         Args:
             label(str): the label dictionary key
         """
@@ -191,10 +201,10 @@ class FireProcedure(QLabel):
             )
         except KeyError:
             return
-    
+
     def idleTasks(self) -> tuple:
         """Returns state and confirmation messages for idle tasks.
-        
+
         Returns:
             tuple: RocketStates.<STATE>, "<Confirmation message>"
         """
@@ -204,7 +214,7 @@ class FireProcedure(QLabel):
 
     def highPressTasks(self):
         """Returns state and confirmation messages for high press tasks.
-        
+
         Returns:
             tuple: RocketStates.<STATE>, "<Confirmation message>"
         """
@@ -216,19 +226,22 @@ class FireProcedure(QLabel):
 
     def tankHighPressTasks(self):
         """Returns state and confirmation messages for tank high press tasks.
-        
+
         Returns:
             tuple: RocketStates.<STATE>, "<Confirmation message>"
         """
         if not self.tasks[RocketStates.TANK_HP][RocketStates.COPV_CLOSE]:
             return RocketStates.COPV_CLOSE, "Confirm COPV SV is closed?"
         if not self.tasks[RocketStates.TANK_HP][RocketStates.TANKS_OPEN]:
-            return RocketStates.TANKS_OPEN, "Confirm top 3 SVs open/Acceptable leak rate?"
+            return (
+                RocketStates.TANKS_OPEN,
+                "Confirm top 3 SVs open/Acceptable leak rate?",
+            )
         return RocketStates.NULL, "No more tasks, advance stage to continue."
 
     def fireTasks(self):
         """Returns state and confirmation messages for fire tasks.
-        
+
         Returns:
             tuple: RocketStates.<STATE>, "<Confirmation message>"
         """
@@ -251,7 +264,7 @@ class StateMachine:
         self.states = {}
         self.procedure = procedure
         self.start = procedure.currentStage
-    
+
     @property
     def current(self) -> str:
         """Current state property."""
@@ -264,7 +277,7 @@ class StateMachine:
 
     def addState(self, name, next, confirms) -> None:
         """Adds a state.
-        
+
         Args:
             name: the name of the state
             next: the next state
@@ -282,7 +295,8 @@ class StateMachine:
         return last
 
 
-# MAIN WINDOW -------------------------------------------------------------------------------------------------|
+# MAIN WINDOW -------------------------------------------------------------------------------------|
+
 
 class RocketDisplayWindow(QMainWindow):
     """Main Rocket Control Window."""
@@ -318,18 +332,15 @@ class RocketDisplayWindow(QMainWindow):
 
         # log start
         start = "NEW SESSION: " + START_TIME
-        self.displayPrint(
-            start,
-            reformat=False
-        )
-        with open(DATA_LOG_FILE, 'a') as datalog:
-            datalog.write(start + '\n')
+        self.displayPrint(start, reformat=False)
+        with open(DATA_LOG_FILE, "a") as datalog:
+            datalog.write(start + "\n")
 
     # SERIAL FUNCTIONS
 
     def threadingSetup(self, serial: SerialComm) -> None:
         """Sets up threading, serial worker and signals/slots.
-        
+
         *Serial Window Core
         """
         self.serialThread = QThread()
@@ -347,7 +358,7 @@ class RocketDisplayWindow(QMainWindow):
 
         Returns:
             bool: True setup is successful, False otherwise
-        
+
         *Serial Window Core
         """
         ports = serial.tools.list_ports.comports()
@@ -357,9 +368,9 @@ class RocketDisplayWindow(QMainWindow):
                 "No COM ports available.\nPlease plug in devices before starting.",
             )
             return False
-        
+
         warning = (
-            "ATTENTION:\nWhen selecting a port, look for \"Serial-USB\" or your selected MCU platform."
+            'ATTENTION:\nWhen selecting a port, look for "Serial-USB" or your selected platform.'
             + "If you do not see an option like this, please cancel and check your USB connection."
         )
         conf = QMessageBox(
@@ -374,7 +385,7 @@ class RocketDisplayWindow(QMainWindow):
 
         selection, ok = QInputDialog().getItem(
             self.centralWidget(),
-            "COM select", 
+            "COM select",
             "Select a port:",
             [f"{desc}" for name, desc, hwid in ports],
         )
@@ -393,7 +404,7 @@ class RocketDisplayWindow(QMainWindow):
         """
         selection, ok = QInputDialog().getItem(
             self.centralWidget(),
-            "Baudrate select", 
+            "Baudrate select",
             "Select a baudrate:",
             [str(rate) for rate in BAUDRATES],
         )
@@ -413,7 +424,7 @@ class RocketDisplayWindow(QMainWindow):
             error.exec()
             return False
         return True
-    
+
     def setupSerial(self) -> None:
         """Serial option selection."""
         if not self.selectPort() or not self.selectBaud():
@@ -433,7 +444,7 @@ class RocketDisplayWindow(QMainWindow):
                 self.createConfBox(
                     "Serial Error",
                     "Serial connection could not be established.",
-                    QMessageBox.Icon.Critical
+                    QMessageBox.Icon.Critical,
                 )
         elif self.serialOn:
             self.serialOn = False
@@ -448,7 +459,7 @@ class RocketDisplayWindow(QMainWindow):
                 "Serial settings not configured.",
                 QMessageBox.Icon.Critical,
             )
-    
+
     def closeEvent(self, event) -> None:
         """Adds additional functions when closing window."""
         self.serialWorker.program = False
@@ -484,10 +495,10 @@ class RocketDisplayWindow(QMainWindow):
 
         Args:
             data(str): the incoming data
-        
+
         Returns:
             list[tuple]: a list of tuples with destination/value pairs
-        
+
         *Serial Window Core
         """
         if VALVE_TAG in data:
@@ -502,10 +513,10 @@ class RocketDisplayWindow(QMainWindow):
 
     def updateDisplay(self, dataset: list) -> None:
         """Updates display values in the window dictionaries.
-        
+
         Args:
             dataset(list): list of parsed data in the format destination, value
-        
+
         *Serial Window Core
         """
         for dest, value in dataset:
@@ -513,10 +524,14 @@ class RocketDisplayWindow(QMainWindow):
                 if SV in dest:
                     status = int(value.strip())
                     if status:
-                        self.dynamicLabels[dest].setStyleSheet(FONT_CSS + "color: green; ")
+                        self.dynamicLabels[dest].setStyleSheet(
+                            FONT_CSS + "color: green; "
+                        )
                         self.dynamicLabels[dest].setText(DISP_FORMAT(dest, "O"))
                     else:
-                        self.dynamicLabels[dest].setStyleSheet(FONT_CSS + "color: white; ")
+                        self.dynamicLabels[dest].setStyleSheet(
+                            FONT_CSS + "color: white; "
+                        )
                         self.dynamicLabels[dest].setText(DISP_FORMAT(dest, "C"))
                 elif PT in dest:
                     self.dynamicLabels[dest].setText(DISP_FORMAT(dest, value.strip()))
@@ -529,34 +544,45 @@ class RocketDisplayWindow(QMainWindow):
 
         Args:
             string(str): the incoming data
-        
+
         *Serial Window Core
         """
         with open(DATA_LOG_FILE, "a") as sysLog:
-            sysLog.write(self.strFormat(string) + '\n')
+            sysLog.write(self.strFormat(string) + "\n")
         data = self.parseData(string)
         self.updateDisplay(data)
 
     def sendMessage(self) -> None:
         """Sends a specific message to toggle without starting a preset.
-        
+
         *Serial Window Core
         """
         if self.serialSet and self.serialOn:
             command = self.serialEntry.text()
             if len(set(command)) < len(command):
-                self.createConfBox("Serial Message Warning", "Duplicate pin detected - please try again.")
+                self.createConfBox(
+                    "Serial Message Warning",
+                    "Duplicate pin detected - please try again.",
+                )
                 return
             self.displayPrint(f"Send: {command}")
             self.serialWorker.sendToggle(MSG_PAD(command))
         else:
-            self.createConfBox("Serial Error", "Serial must be configured and on.", QMessageBox.Icon.Critical)
+            self.createConfBox(
+                "Serial Error",
+                "Serial must be configured and on.",
+                QMessageBox.Icon.Critical,
+            )
 
     def serialError(self) -> None:
         """Displays error popup upon handling of a serial exception."""
-        self.createConfBox("Serial Error", "Serial error detected! Please try again.", QMessageBox.Icon.Warning)
+        self.createConfBox(
+            "Serial Error",
+            "Serial error detected! Please try again.",
+            QMessageBox.Icon.Warning,
+        )
         self.toggleSerial()
-    
+
     def strFormat(self, string: str) -> str:
         """Returns formatted string for monitor display.
 
@@ -568,16 +594,19 @@ class RocketDisplayWindow(QMainWindow):
         """
         return QDateTime.currentDateTime().toString(DATE_TIME_FORMAT) + string.strip()
 
-    def createLabelBox(self, message: str | None= None,
-                labelType: str | None= None,
-                style: str | None= None) -> QLabel:
+    def createLabelBox(
+        self,
+        message: str | None = None,
+        labelType: str | None = None,
+        style: str | None = None,
+    ) -> QLabel:
         """Creates frame box with optional label message.
-        
+
         Args:
             labelType(str): labelType to map label to dict of labels.
             message(str): the label message itself.
             style(str): style sheet configurations.
-        
+
         Returns:
             QLabel: the generated frame box with optional message.
         """
@@ -595,7 +624,7 @@ class RocketDisplayWindow(QMainWindow):
 
     def createLayout(self, parent, widgets: list[tuple]) -> QGridLayout:
         """Creates a layout of widgets.
-        
+
         Args:
             widgets(list): list of widgets to place in layout,
             plus layout
@@ -621,7 +650,7 @@ class RocketDisplayWindow(QMainWindow):
         Args:
             widgets(list): list of widgets to place in layout,
             plus grid location.
-        
+
         Returns:
             QLabel: the generated frame box with given widgets.
 
@@ -634,10 +663,15 @@ class RocketDisplayWindow(QMainWindow):
         label.setLineWidth(1)
         return label
 
-    def createConfBox(self, title: str, message: str,
-            icon: QMessageBox.Icon=QMessageBox.Icon.Warning, default: bool=True) -> bool:
+    def createConfBox(
+        self,
+        title: str,
+        message: str,
+        icon: QMessageBox.Icon = QMessageBox.Icon.Warning,
+        default: bool = True,
+    ) -> bool:
         """Creates a confirmation box.
-        
+
         Args:
             title(str): title of the box window
             message(str): the message to display
@@ -669,40 +703,106 @@ class RocketDisplayWindow(QMainWindow):
 
         # top row
         self.clock = Clock("color: white; font-family: consolas; font-size: 16px; ")
-        
-        grid.addWidget(self.createLabelBox("<h1> VEHICLE STATUS </h1>", STATUS_LABEL, HEADER_STYLE), 0, 0, 1, 3)
-        grid.addWidget(self.createLabelBox("<h1> FLUIDS CONTROL DISPLAY </h1>", DIAGRAM_LABEL, HEADER_STYLE), 0, 3, 1, 6)
-        grid.addWidget(self.createLayoutBox([(self.clock.dateTime, 0, 0, 1, 1)]), 0, 9, 1, 3)
+
+        grid.addWidget(
+            self.createLabelBox(
+                "<h1> VEHICLE STATUS </h1>", STATUS_LABEL, HEADER_STYLE
+            ),
+            0,
+            0,
+            1,
+            3,
+        )
+        grid.addWidget(
+            self.createLabelBox(
+                "<h1> FLUIDS CONTROL DISPLAY </h1>", DIAGRAM_LABEL, HEADER_STYLE
+            ),
+            0,
+            3,
+            1,
+            6,
+        )
+        grid.addWidget(
+            self.createLayoutBox([(self.clock.dateTime, 0, 0, 1, 1)]), 0, 9, 1, 3
+        )
 
         # left column
         self.createProcedure()
 
-        grid.addWidget(self.createLabelBox(f"<h1>STAGE: {self.mode[self.currentState]}</h1>", CURR_STATE, HEADER_STYLE), 1, 0, 1, 3)
+        grid.addWidget(
+            self.createLabelBox(
+                f"<h1>STAGE: {self.mode[self.currentState]}</h1>",
+                CURR_STATE,
+                HEADER_STYLE,
+            ),
+            1,
+            0,
+            1,
+            3,
+        )
         grid.addWidget(self.createLayoutBox([(self.procedure, 0, 0, 1, 1)]), 2, 0, 8, 3)
-        grid.addWidget(self.createLayoutBox(self.createButtonSets([(PROCEED, 0, 0, 1, 1), (MARK_STEP, 0, 1, 1, 1)])), 10, 0, 2, 3)
-        #grid.addWidget(self.createLayoutBox([(self.clock.dateTime, 0, 0)]), 12, 0, 2, 3)
-        #grid.addWidget(self.createLayoutBox([(self.states, 0, 0, 1, 1)]), 4, 0, 8, 3)
-        #grid.addWidget(self.createLayoutBox(self.createButtonSets([(PROCEED, 0, 0, 1, 1), (MARK_STEP, 0, 1, 1, 1)])), 2, 0, 2, 3)
-        grid.addWidget(self.createLabelBox(f"<h1>ABORT MISSION: </h1>", ABORT, HEADER_STYLE), 12, 0, 1, 3)
-        grid.addWidget(self.createLayoutBox(self.createButtonSets([(OVERPRESSURE, 0, 0, 1, 1), (IGNITION_FAILURE, 0, 1, 1, 1)])), 13, 0, 1, 3)
+        grid.addWidget(
+            self.createLayoutBox(
+                self.createButtonSets([(PROCEED, 0, 0, 1, 1), (MARK_STEP, 0, 1, 1, 1)])
+            ),
+            10,
+            0,
+            2,
+            3,
+        )
+        # grid.addWidget(self.createLayoutBox([(self.clock.dateTime, 0, 0)]), 12, 0, 2, 3)
+        # grid.addWidget(self.createLayoutBox([(self.states, 0, 0, 1, 1)]), 4, 0, 8, 3)
+        # grid.addWidget(self.createLayoutBox(self.createButtonSets([(PROCEED, 0, 0, 1, 1), (MARK_STEP, 0, 1, 1, 1)])), 2, 0, 2, 3)
+        grid.addWidget(
+            self.createLabelBox("<h1>ABORT MISSION: </h1>", ABORT, HEADER_STYLE),
+            12,
+            0,
+            1,
+            3,
+        )
+        grid.addWidget(
+            self.createLayoutBox(
+                self.createButtonSets(
+                    [(OVERPRESSURE, 0, 0, 1, 1), (IGNITION_FAILURE, 0, 1, 1, 1)]
+                )
+            ),
+            13,
+            0,
+            1,
+            3,
+        )
 
         # middle column
         grid.addWidget(self.createWireDiagram(), 1, 3, 13, 6)
 
         # right column
         grid.addWidget(self.createLabelBox(), 1, 9, 9, 3)
-        grid.addWidget(self.createLayoutBox(self.createButtonSets([(SETUP_SER, 0, 0, 1, 1), (SER_ON, 0, 1, 1, 1)])), 10, 9, 1, 3)
+        grid.addWidget(
+            self.createLayoutBox(
+                self.createButtonSets([(SETUP_SER, 0, 0, 1, 1), (SER_ON, 0, 1, 1, 1)])
+            ),
+            10,
+            9,
+            1,
+            3,
+        )
         grid.addWidget(self.createLayoutBox(self.createSerialLayout()), 11, 9, 3, 3)
 
         return grid
-    
+
     def createProcedure(self) -> None:
         """Creates procedure."""
         self.procedure = FireProcedure()
         self.sm = StateMachine(self.procedure)
-        self.sm.addState(RocketStates.IDLE, RocketStates.HIGH_PRESS, self.procedure.idleTasks)
-        self.sm.addState(RocketStates.HIGH_PRESS, RocketStates.TANK_HP, self.procedure.highPressTasks)
-        self.sm.addState(RocketStates.TANK_HP, RocketStates.FIRE, self.procedure.tankHighPressTasks)
+        self.sm.addState(
+            RocketStates.IDLE, RocketStates.HIGH_PRESS, self.procedure.idleTasks
+        )
+        self.sm.addState(
+            RocketStates.HIGH_PRESS, RocketStates.TANK_HP, self.procedure.highPressTasks
+        )
+        self.sm.addState(
+            RocketStates.TANK_HP, RocketStates.FIRE, self.procedure.tankHighPressTasks
+        )
         self.sm.addState(RocketStates.FIRE, None, self.procedure.fireTasks)
 
     def createSerialLayout(self) -> list:
@@ -717,18 +817,18 @@ class RocketDisplayWindow(QMainWindow):
         self.serialEntry = QLineEdit()
         self.serialEntry.setStyleSheet(COLOR_CSS + FONT_CSS)
         self.serialEntry.setMaximumHeight(LINE_HEIGHT)
-        
+
         # Send button
         self.buttons[SERIAL_SEND] = QPushButton(SERIAL_SEND)
         self.buttons[SERIAL_SEND].setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.buttons[SERIAL_SEND].setStyleSheet(BUTTON_STYLE)
 
-        return [(
-            self.serialEntry, 0, 0, 1, 1),
+        return [
+            (self.serialEntry, 0, 0, 1, 1),
             (self.buttons[SERIAL_SEND], 0, 1, 1, 1),
-            (self.monitor, 1, 0, 1, 2)
+            (self.monitor, 1, 0, 1, 2),
         ]
-    
+
     def createWireDiagram(self) -> QLabel:
         """Creates wire diagram."""
         frame = QLabel()
@@ -747,42 +847,52 @@ class RocketDisplayWindow(QMainWindow):
             name = SV + str(i)
             self.dynamicLabels[name] = QLabel(DISP_FORMAT(name, "C"))
             self.dynamicLabels[name].setStyleSheet("color: white; " + FONT_CSS)
-        
+
         for i in range(1, 5):
             name = PT + str(i)
             self.dynamicLabels[name] = QLabel(DISP_FORMAT(name, "n/a"))
             self.dynamicLabels[name].setStyleSheet("color: white; " + FONT_CSS)
-        
+
         # boxes
-        box1 = self.createLayoutBox([
-            (self.dynamicLabels[SV + "1"], 0, 0, 1, 1),
-            (self.dynamicLabels[SV + "2"], 1, 0, 1, 1),
-        ])
+        box1 = self.createLayoutBox(
+            [
+                (self.dynamicLabels[SV + "1"], 0, 0, 1, 1),
+                (self.dynamicLabels[SV + "2"], 1, 0, 1, 1),
+            ]
+        )
 
-        box2 = self.createLayoutBox([
-            (self.dynamicLabels[PT + "1"], 0, 0, 1, 1),
-            (self.dynamicLabels[SV + "3"], 1, 0, 1, 1),
-        ])
+        box2 = self.createLayoutBox(
+            [
+                (self.dynamicLabels[PT + "1"], 0, 0, 1, 1),
+                (self.dynamicLabels[SV + "3"], 1, 0, 1, 1),
+            ]
+        )
 
-        box3 = self.createLayoutBox([
-            (self.dynamicLabels[PT + "2"], 0, 0, 1, 1),
-            (self.dynamicLabels[SV + "5"], 1, 0, 1, 1),
-            (self.dynamicLabels[SV + "6"], 2, 0, 1, 1),
-        ])
+        box3 = self.createLayoutBox(
+            [
+                (self.dynamicLabels[PT + "2"], 0, 0, 1, 1),
+                (self.dynamicLabels[SV + "5"], 1, 0, 1, 1),
+                (self.dynamicLabels[SV + "6"], 2, 0, 1, 1),
+            ]
+        )
 
-        box4 = self.createLayoutBox([
-            (self.dynamicLabels[PT + "3"], 0, 0, 1, 1),
-            (self.dynamicLabels[SV + "4"], 1, 0, 1, 1),
-            (self.dynamicLabels[SV + "7"], 2, 0, 1, 1),
-        ])
+        box4 = self.createLayoutBox(
+            [
+                (self.dynamicLabels[PT + "3"], 0, 0, 1, 1),
+                (self.dynamicLabels[SV + "4"], 1, 0, 1, 1),
+                (self.dynamicLabels[SV + "7"], 2, 0, 1, 1),
+            ]
+        )
 
-        box5 = self.createLayoutBox([
-            (self.dynamicLabels[SV + "8"], 0, 0, 1, 1),
-            (self.dynamicLabels[SV + "9"], 1, 0, 1, 1),
-            (self.dynamicLabels[PT + "4"], 2, 0, 1, 1),
-        ])
+        box5 = self.createLayoutBox(
+            [
+                (self.dynamicLabels[SV + "8"], 0, 0, 1, 1),
+                (self.dynamicLabels[SV + "9"], 1, 0, 1, 1),
+                (self.dynamicLabels[PT + "4"], 2, 0, 1, 1),
+            ]
+        )
 
-        #layout
+        # layout
         labelLayout.addWidget(imageLabel, 0, 2, 13, 6)
         labelLayout.addWidget(box1, 1, 0, 2, 1)
         labelLayout.addWidget(box2, 1, 6, 2, 1)
@@ -794,7 +904,7 @@ class RocketDisplayWindow(QMainWindow):
 
     def createButtonSets(self, keys: list[tuple]) -> list[tuple]:
         """Generate status control buttons.
-        
+
         Args:
             keys(list[str]): list of button names (for dictionary hashing)
 
@@ -816,7 +926,9 @@ class RocketDisplayWindow(QMainWindow):
         # display
         if self.currentState <= len(self.mode) - 2 and not self.aborted:
             self.currentState += 1
-            self.dynamicLabels[CURR_STATE].setText(f"<h1>STAGE: {self.mode[self.currentState]}")
+            self.dynamicLabels[CURR_STATE].setText(
+                f"<h1>STAGE: {self.mode[self.currentState]}"
+            )
             self.dynamicLabels[CURR_STATE].setStyleSheet(HEADER_STYLE)
 
         elif self.currentState == len(self.mode) - 1 and not self.aborted:
@@ -825,28 +937,34 @@ class RocketDisplayWindow(QMainWindow):
             remove = self.generalLayout.itemAtPosition(2, 0)
             widget = remove.widget()
             self.generalLayout.removeWidget(widget)
-            self.generalLayout.addWidget(self.createLabelBox("whoooo", "helloTest", HEADER_STYLE), 2, 0, 8, 3)
+            self.generalLayout.addWidget(
+                self.createLabelBox("whoooo", "helloTest", HEADER_STYLE), 2, 0, 8, 3
+            )
 
     def updateStage(self):
         """Tries to update the stage."""
         if not self.aborted:
-            if not self.createConfBox("Stage Advancement", "Confirm: advance to next stage?", default=False):
+            if not self.createConfBox(
+                "Stage Advancement", "Confirm: advance to next stage?", default=False
+            ):
                 return
             last = self.sm.update()
             if not last:
                 self.createConfBox(
                     "Stage Advancement",
                     "Incomplete tasks remaining, unable to advance.",
-                    QMessageBox.Icon.Critical
+                    QMessageBox.Icon.Critical,
                 )
                 return
             if self.currentState <= len(self.mode) - 2 and not self.aborted:
                 self.currentState += 1
-                self.dynamicLabels[CURR_STATE].setText(f"<h1>STAGE: {self.mode[self.currentState]}")
+                self.dynamicLabels[CURR_STATE].setText(
+                    f"<h1>STAGE: {self.mode[self.currentState]}"
+                )
                 self.dynamicLabels[CURR_STATE].setStyleSheet(HEADER_STYLE)
             # ADD SAFETY HERE FOR COMPLETION OF ALL STAGES OR MOVE INTO AN IF STATEMENT
             self.procedure.changeStatus(last)
-    
+
     def updateTask(self):
         """Tries to update a task."""
         if not self.aborted:
@@ -857,15 +975,16 @@ class RocketDisplayWindow(QMainWindow):
 
     def abortMission(self, confirmation: str) -> bool:
         """Abort mission confirmation.
-        
+
         Args:
             confirmation(str): the confirmation message to ask
 
         Returns:
             bool: abortion confirmation status
         """
-        if self.createConfBox("Mission Abort Confirmation",
-                confirmation, default=False):
+        if self.createConfBox(
+            "Mission Abort Confirmation", confirmation, default=False
+        ):
             self.dynamicLabels[CURR_STATE].setText("<h1> MISSION ABORTED </h1>")
             self.aborted = True
             try:
@@ -887,7 +1006,7 @@ class RocketDisplayWindow(QMainWindow):
                 print("Open Ox line SV")
                 print("Open top center SV")
                 print("Change task display: Overpressure abort sequence complete.")
-    
+
     def abortIgnitionFail(self) -> None:
         """Begins ignition fail abort sequence on confirmation."""
         if not self.aborted:
@@ -915,12 +1034,16 @@ class RocketDisplayWindow(QMainWindow):
         """Starts countdown"""
         if not self.aborted:
             self.moment = 11
+
             def countSecond():
                 self.moment -= 1
                 if self.moment == 0:
                     self.moment = "BLASTOFF"
                     self.countdown.stop()
-                self.dynamicLabels[CURR_STATE].setText(f"<h1> COUNTDOWN: {self.moment} </h1>")
+                self.dynamicLabels[CURR_STATE].setText(
+                    f"<h1> COUNTDOWN: {self.moment} </h1>"
+                )
+
             countSecond()
             self.countdown = QTimer()
             self.countdown.timeout.connect(countSecond)
