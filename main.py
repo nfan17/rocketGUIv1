@@ -47,7 +47,7 @@ SERIAL_SEND = "Send"
 # Pins
 COMMAND_LEN = 8
 MSG_PAD = lambda x: x + "0" * (8 - len(x))
-DISP_FORMAT = lambda name, val: f"{name}: {val}"
+DISP_FORMAT = lambda name, val: f"{name}:{val}"
 PRESSURE_TAG = ""  # no tag rn
 PRESSURE_SEP = ", "
 VALVE_TAG = "Toggle PIN"
@@ -177,7 +177,7 @@ class FireProcedure(QLabel):
         Args:
             label(str): the label dictionary key
         """
-        color = "#00A891" if status else "white"
+        color = DETAILING_H if status else TEXT
         try:
             if label in RocketStates.states:
                 fontSize = 9
@@ -314,10 +314,10 @@ class RocketDisplayWindow(QMainWindow):
         centralWidget.setLayout(self.generalLayout)
         self.setCentralWidget(centralWidget)
 
-        self.linkButtons()
-
         self.serialSet = False
         self.serialOn = False
+
+        self.linkButtons()
 
         # log start
         start = "NEW SESSION: " + START_TIME
@@ -381,7 +381,10 @@ class RocketDisplayWindow(QMainWindow):
         if not ok:
             return False
 
-        self.port = str(re.findall(r"COM[0-9]+", selection)[0])  # get port
+        try:
+            self.port = str(re.findall(r"COM[0-9]+", selection)[0])  # get port
+        except IndexError:
+            return False
 
         return True
 
@@ -424,7 +427,7 @@ class RocketDisplayWindow(QMainWindow):
     def toggleSerial(self) -> None:
         """Toggles serial connection on/off."""
         if self.serialSet and not self.serialOn:
-            try:
+            try:                    
                 self.serial = setupConnection(self.port, self.baud)
                 self.threadingSetup(self.serial)
                 self.serialOn = True
@@ -515,12 +518,12 @@ class RocketDisplayWindow(QMainWindow):
                     status = int(value.strip())
                     if status:
                         self.dynamicLabels[dest].setStyleSheet(
-                            FONT_CSS + "color: green; "
+                            FONT_CSS + f"color: {VALVE_ON}; "
                         )
                         self.dynamicLabels[dest].setText(DISP_FORMAT(dest, "OPEN"))
                     else:
                         self.dynamicLabels[dest].setStyleSheet(
-                            FONT_CSS + "color: white; "
+                            FONT_CSS + f"color: {TEXT}; "
                         )
                         self.dynamicLabels[dest].setText(DISP_FORMAT(dest, "CLOSE"))
                 elif PT in dest:
@@ -542,13 +545,14 @@ class RocketDisplayWindow(QMainWindow):
         data = self.parseData(string)
         self.updateDisplay(data)
 
-    def sendMessage(self) -> None:
+    def sendMessage(self, command: (str | None)=None) -> None:
         """Sends a specific message to toggle without starting a preset.
 
         *Serial Window Core
         """
         if self.serialSet and self.serialOn:
-            command = self.serialEntry.text()
+            if not command:
+                command = self.serialEntry.text()
             if len(set(command)) < len(command):
                 self.createConfBox(
                     "Serial Message Warning",
@@ -692,7 +696,7 @@ class RocketDisplayWindow(QMainWindow):
         grid.setVerticalSpacing(1)
 
         # top row
-        self.clock = Clock("color: white; font-family: consolas; font-size: 16px; ")
+        self.clock = Clock(f"color: {TEXT}; font-family: consolas; font-size: 16px; ")
 
         grid.addWidget(
             self.createLabelBox(
@@ -833,77 +837,98 @@ class RocketDisplayWindow(QMainWindow):
         for i in range(1, 10):
             name = SV + str(i)
             self.dynamicLabels[name] = QLabel(DISP_FORMAT(name, "CLOSE"))
-            self.dynamicLabels[name].setStyleSheet("color: white; " + FONT_CSS)
-            #self.dynamicLabels[name].setAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.dynamicLabels[name].setStyleSheet(f"color: {TEXT}; {FONT_CSS}")
+            self.buttons[name] = QPushButton(f"{name}")
+            self.buttons[name].setStyleSheet(BUTTON_STYLE)
 
         for i in range(1, 5):
             name = PT + str(i)
             self.dynamicLabels[name] = QLabel(DISP_FORMAT(name, "n/a"))
-            self.dynamicLabels[name].setStyleSheet("color: white; " + FONT_CSS)
-            #self.dynamicLabels[name].setAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.dynamicLabels[name].setStyleSheet(f"color: {PRESS}; {FONT_CSS}; {BOLD}")
 
         # boxes
         t1 = QLabel("N2 GSE")
+        t1.setStyleSheet(
+            f"{FONT_CSS} color: {DETAILING_H}; {BOLD}"
+        )
         t1.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         box1 = self.createLayoutBox(
             [
                 (t1, 0, 0, 1, 1),
                 (self.dynamicLabels[SV + "1"], 1, 0, 1, 1),
-                (self.dynamicLabels[SV + "2"], 2, 0, 1, 1),
+                (self.buttons[SV + "1"], 2, 0, 1, 1),
+                (self.dynamicLabels[SV + "2"], 3, 0, 1, 1),
+                (self.buttons[SV + "2"], 4, 0, 1, 1),
             ]
         )
 
         t2 = QLabel("High Press")
+        t2.setStyleSheet(
+            f"{FONT_CSS} color: {DETAILING_H}; {BOLD}"
+        )
         t2.setAlignment(Qt.AlignmentFlag.AlignCenter)
         box2 = self.createLayoutBox(
             [
                 (t2, 0, 0, 1, 1),
                 (self.dynamicLabels[PT + "1"], 1, 0, 1, 1),
                 (self.dynamicLabels[SV + "3"], 2, 0, 1, 1),
+                (self.buttons[SV + "3"], 3, 0, 1, 1),
             ]
         )
 
         t3 = QLabel("Ox/N2O GSE")
         t3.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        t3.setStyleSheet(FONT_CSS + f"font-size: 11px; color: {DETAILING_H};")
+        t3.setStyleSheet(f"{FONT_CSS} font-size: 11px; color: {DETAILING_H}; {BOLD}")
         box3 = self.createLayoutBox(
             [
                 (t3, 0, 0, 1, 1),
                 (self.dynamicLabels[PT + "2"], 1, 0, 1, 1),
                 (self.dynamicLabels[SV + "5"], 2, 0, 1, 1),
-                (self.dynamicLabels[SV + "6"], 3, 0, 1, 1),
+                (self.buttons[SV + "5"], 3, 0, 1, 1),
+                (self.dynamicLabels[SV + "6"], 4, 0, 1, 1),
+                (self.buttons[SV + "6"], 5, 0, 1, 1),
             ]
         )
 
         t4 = QLabel("Fuel")
+        t4.setStyleSheet(
+            f"{FONT_CSS} color: {DETAILING_H}; {BOLD};"
+        )
         t4.setAlignment(Qt.AlignmentFlag.AlignCenter)
         box4 = self.createLayoutBox(
             [
                 (t4, 0, 0, 1, 1),
                 (self.dynamicLabels[PT + "3"], 1, 0, 1, 1),
                 (self.dynamicLabels[SV + "4"], 2, 0, 1, 1),
-                (self.dynamicLabels[SV + "7"], 3, 0, 1, 1),
+                (self.buttons[SV + "4"], 3, 0, 1, 1),
+                (self.dynamicLabels[SV + "7"], 4, 0, 1, 1),
+                (self.buttons[SV + "7"], 5, 0, 1, 1),
             ]
         )
 
         t5 = QLabel("Main Valve")
+        t5.setStyleSheet(
+            f"{FONT_CSS} font-size: 11px; color: {DETAILING_H}; {BOLD}"
+        )
         t5.setAlignment(Qt.AlignmentFlag.AlignCenter)
         box5 = self.createLayoutBox(
             [
                 (t5, 0, 0, 1, 1),
                 (self.dynamicLabels[SV + "8"], 1, 0, 1, 1),
-                (self.dynamicLabels[SV + "9"], 2, 0, 1, 1),
-                (self.dynamicLabels[PT + "4"], 3, 0, 1, 1),
+                (self.buttons[SV + "8"], 2, 0, 1, 1),
+                (self.dynamicLabels[SV + "9"], 3, 0, 1, 1),
+                (self.buttons[SV + "9"], 4, 0, 1, 1),
+                (self.dynamicLabels[PT + "4"], 5, 0, 1, 1),
             ]
         )
 
         # layout
         labelLayout.addWidget(imageLabel, 0, 2, 13, 6)
-        labelLayout.addWidget(box1, 1, 0, 2, 1)
-        labelLayout.addWidget(box2, 1, 6, 2, 1)
-        labelLayout.addWidget(box3, 5, 0, 3, 1)
-        labelLayout.addWidget(box4, 5, 7, 3, 1)
+        labelLayout.addWidget(box1, 1, 0, 3, 1)
+        labelLayout.addWidget(box2, 1, 6, 3, 1)
+        labelLayout.addWidget(box3, 6, 0, 4, 1)
+        labelLayout.addWidget(box4, 5, 7, 4, 1)
         labelLayout.addWidget(box5, 10, 6, 3, 1)
 
         return frame
@@ -1035,6 +1060,17 @@ class RocketDisplayWindow(QMainWindow):
         self.buttons[SER_TOGGLE].clicked.connect(self.toggleSerial)
         self.buttons[SETUP_SER].clicked.connect(self.setupSerial)
         self.buttons[SERIAL_SEND].clicked.connect(self.sendMessage)
+
+        self.buttons[SV + "1"].clicked.connect(lambda: self.sendMessage("1"))
+        self.buttons[SV + "2"].clicked.connect(lambda: self.sendMessage("2"))
+        self.buttons[SV + "3"].clicked.connect(lambda: self.sendMessage("3"))
+        self.buttons[SV + "4"].clicked.connect(lambda: self.sendMessage("4"))
+        self.buttons[SV + "5"].clicked.connect(lambda: self.sendMessage("5"))
+        self.buttons[SV + "6"].clicked.connect(lambda: self.sendMessage("6"))
+        self.buttons[SV + "7"].clicked.connect(lambda: self.sendMessage("7"))
+        self.buttons[SV + "8"].clicked.connect(lambda: self.sendMessage("8"))
+        self.buttons[SV + "9"].clicked.connect(lambda: self.sendMessage("9"))
+        
 
     def countDown(self) -> None:
         """Starts countdown"""

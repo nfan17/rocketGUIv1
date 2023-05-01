@@ -17,6 +17,11 @@ DETAILING_H = "#00A891"
 #DETAILING = QColor(48, 170, 170) # lighter blue
 SECONDARY = WHITE
 
+VALVE_ON = "green"
+TEXT = "white"
+PRESS = "red"
+BOLD = "font-weight: bold; "
+
 COLOR_CSS = f"background: {PRIMARY_H}; color: {DETAILING_H}; "
 FONT_CSS = "font-family: consolas; "
 
@@ -48,9 +53,9 @@ BUTTON_STYLE = (
     )
 )
 
-HEADER_STYLE = "color: white; font-family: consolas; font-size: 9px; "
-STAGE_FONT_WHITE = "color: white; font-family: consolas; font-size: 13px; "
-STAGE_FONT_BLUE = "color: #00A891; font-family: consolas; font-size: 13px; "
+HEADER_STYLE = f"color: {TEXT}; font-family: consolas; font-size: 9px; "
+STAGE_FONT_WHITE = f"color: {TEXT}; font-family: consolas; font-size: 13px; "
+STAGE_FONT_BLUE = f"color: {DETAILING_H}; font-family: consolas; font-size: 13px; "
 
 DATE_TIME_FORMAT = "MM/dd/yyyy | hh:mm:ss:zzz -> "
 
