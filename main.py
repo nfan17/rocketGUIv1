@@ -43,6 +43,7 @@ SER_TOGGLE = "START SERIAL"
 SER_ON = "START SERIAL"
 SER_OFF = "STOP SERIAL"
 SERIAL_SEND = "Send"
+LOCK = "Unlock"
 
 # Pins
 COMMAND_LEN = 8
@@ -74,12 +75,10 @@ class RocketDisplayWindow(QMainWindow):
         """Constructs new Rocket Display Window."""
         super().__init__()
 
-        # values
+        # launch state
         self.mode = LAUNCH_STATES
         self.currentState = 0
         self.aborted = False
-        self.buttons = {}
-        self.dynamicLabels = {}
 
         # window
         self.setWindowTitle("Mission Control")
@@ -87,6 +86,9 @@ class RocketDisplayWindow(QMainWindow):
         self.setWindowIcon(QIcon(ICON_PATH))
         self.pal = DarkCyanPalette()
         self.setPalette(self.pal)
+
+        self.buttons = {}
+        self.dynamicLabels = {}
 
         # layout
         self.generalLayout = self.createMainGrid()
@@ -98,6 +100,9 @@ class RocketDisplayWindow(QMainWindow):
         self.serialOn = False
 
         self.linkButtons()
+
+        self.locked = False
+        self.toggleScreenLock()
 
         # log start
         start = "NEW SESSION: " + START_TIME
@@ -704,6 +709,9 @@ class RocketDisplayWindow(QMainWindow):
             ]
         )
 
+        self.buttons[LOCK] = QPushButton(LOCK)
+        self.buttons[LOCK].setStyleSheet(BUTTON_STYLE)
+
         # layout
         labelLayout.addWidget(imageLabel, 0, 4, 13, 12)
         labelLayout.addWidget(box1, 1, 0, 3, 2)
@@ -711,6 +719,7 @@ class RocketDisplayWindow(QMainWindow):
         labelLayout.addWidget(box3, 6, 0, 4, 2)
         labelLayout.addWidget(box4, 5, 14, 4, 2)
         labelLayout.addWidget(box5, 10, 11, 4, 4)
+        labelLayout.addWidget(self.buttons[LOCK], 14, 0, 1, 2)
 
         return frame
 
@@ -738,23 +747,25 @@ class RocketDisplayWindow(QMainWindow):
                 "Stage Advancement", "Confirm: advance to next stage?", default=False
             ):
                 return
-        if self.currentState + 1 >= len(LAUNCH_STATES):
-            self.createConfBox("Stage Advancement", "No more stages remaining.")
-            return
+            if self.currentState + 1 >= len(LAUNCH_STATES):
+                self.createConfBox("Stage Advancement", "No more stages remaining.")
+                return
 
-        # Change highlight
-        self.dynamicLabels[LAUNCH_STATES[self.currentState]].setStyleSheet(
-            STAGE_FONT_WHITE
-        )
-        self.currentState += 1
-        self.dynamicLabels[LAUNCH_STATES[self.currentState]].setStyleSheet(
-            STAGE_FONT_BLUE
-        )
+            # Change highlight
+            self.dynamicLabels[LAUNCH_STATES[self.currentState]].setStyleSheet(
+                STAGE_FONT_WHITE
+            )
+            self.currentState += 1
+            self.dynamicLabels[LAUNCH_STATES[self.currentState]].setStyleSheet(
+                STAGE_FONT_BLUE
+            )
 
-        # Change title
-        self.dynamicLabels[CURR_STATE].setText(
-            f"<h1>STAGE: {LAUNCH_STATES[self.currentState]}</h1>"
-        )
+            # Change title
+            self.dynamicLabels[CURR_STATE].setText(
+                f"<h1>STAGE: {LAUNCH_STATES[self.currentState]}</h1>"
+            )
+
+            self.displayPrint(f"Advance to: {LAUNCH_STATES[self.currentState]}")
 
     def previousStage(self) -> None:
         """Confirms to return to last stage."""
@@ -763,25 +774,27 @@ class RocketDisplayWindow(QMainWindow):
                 "Stage Regression", "Confirm: return to last stage?", default=False
             ):
                 return
-        if self.currentState - 1 < 0:
-            self.createConfBox(
-                "Stage Regression", "Cannot return further than first stage."
+            if self.currentState - 1 < 0:
+                self.createConfBox(
+                    "Stage Regression", "Cannot return further than first stage."
+                )
+                return
+            
+            # Change highlight
+            self.dynamicLabels[LAUNCH_STATES[self.currentState]].setStyleSheet(
+                STAGE_FONT_WHITE
             )
-            return
-        
-        # Change highlight
-        self.dynamicLabels[LAUNCH_STATES[self.currentState]].setStyleSheet(
-            STAGE_FONT_WHITE
-        )
-        self.currentState -= 1
-        self.dynamicLabels[LAUNCH_STATES[self.currentState]].setStyleSheet(
-            STAGE_FONT_BLUE
-        )
+            self.currentState -= 1
+            self.dynamicLabels[LAUNCH_STATES[self.currentState]].setStyleSheet(
+                STAGE_FONT_BLUE
+            )
 
-        # Change title
-        self.dynamicLabels[CURR_STATE].setText(
-            f"<h1>STAGE: {LAUNCH_STATES[self.currentState]}</h1>"
-        )
+            # Change title
+            self.dynamicLabels[CURR_STATE].setText(
+                f"<h1>STAGE: {LAUNCH_STATES[self.currentState]}</h1>"
+            )
+
+            self.displayPrint(f"Return to: {LAUNCH_STATES[self.currentState]}")
 
     def abortMission(self, confirmation: str) -> bool:
         """Abort mission confirmation.
@@ -808,6 +821,7 @@ class RocketDisplayWindow(QMainWindow):
         """Begins overpressurization abort sequence on confirmation."""
         if not self.aborted:
             if self.abortMission("Begin overpressurization abort sequence?"):
+                self.displayPrint("System aborted for overpressurization.")
                 print("Change task display: beginning pressure relief sequence.")
                 print("Close K-bottle SV.")
                 print("Open Bottom right SV")
@@ -821,6 +835,7 @@ class RocketDisplayWindow(QMainWindow):
         """Begins ignition fail abort sequence on confirmation."""
         if not self.aborted:
             if self.abortMission("Begin ignition fail abort sequence?"):
+                self.displayPrint("System aborted for ignition failure.")
                 print("Change task display: Ignition failure: entering HOLD stage.")
                 print("Closing K-bottle SV")
                 print("Close Bottom right SV")
@@ -829,6 +844,20 @@ class RocketDisplayWindow(QMainWindow):
                 print("Close Ox line SV")
                 print("Close top center SV")
                 print("Change task display: HOLD STAGE")
+    
+    def toggleScreenLock(self) -> None:
+        """Toggles acces to buttons."""
+        self.locked = not self.locked
+        for key in self.buttons.keys():
+            if key != LOCK:
+                self.buttons[key].setEnabled(not self.locked)
+
+        if self.locked:
+            self.buttons[LOCK].setText("Unlock")
+            #self.buttons[LOCK].setStyleSheet(BUTTON_STYLE + )
+        else:
+            self.buttons[LOCK].setText("Lock")
+            #self.buttons[LOCK].setStyleSheet(BUTTON_STYLE)
 
     def linkButtons(self) -> None:
         """Link buttons to functionality."""
@@ -839,6 +868,7 @@ class RocketDisplayWindow(QMainWindow):
         self.buttons[SER_TOGGLE].clicked.connect(self.toggleSerial)
         self.buttons[SETUP_SER].clicked.connect(self.setupSerial)
         self.buttons[SERIAL_SEND].clicked.connect(self.sendMessage)
+        self.buttons[LOCK].clicked.connect(self.toggleScreenLock)
 
         # create individual SV button initializer functions
         svButtons = [

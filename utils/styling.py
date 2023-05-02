@@ -53,7 +53,11 @@ BUTTON_STYLE = (
     QPushButton:pressed {
         color: white;
         background-color: %s;
-    }""" % (
+    }
+    QPushButton:disabled{
+        color: white;
+    }
+    """ % (
         DETAILING_H,
         DETAILING_H,
         DETAILING_H,
