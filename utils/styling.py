@@ -62,8 +62,8 @@ BUTTON_STYLE = (
 )
 
 HEADER_STYLE = f"color: {TEXT}; font-family: consolas; font-size: 9px; "
-STAGE_FONT_WHITE = f"color: {TEXT}; font-family: consolas; font-size: 13px; "
-STAGE_FONT_BLUE = f"color: {DETAILING_H}; font-family: consolas; font-size: 13px; "
+STAGE_FONT_WHITE = f"color: {TEXT}; font-family: consolas; font-size: 20px; {BOLD}"
+STAGE_FONT_BLUE = f"color: {DETAILING_H}; font-family: consolas; font-size: 20px; {BOLD}"
 
 DATE_TIME_FORMAT = "MM/dd/yyyy | hh:mm:ss:zzz -> "
 
