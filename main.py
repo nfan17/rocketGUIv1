@@ -285,7 +285,8 @@ class RocketDisplayWindow(QMainWindow):
         return []
 
     def updateDisplay(self, dataset: list) -> None:
-        """Updates display values in the window dictionaries.
+        """Updates display values, accepting format of parseData.
+        Modularize this function if design becomes more complex.
 
         Args:
             dataset(list): list of parsed data in the format destination, value
@@ -714,7 +715,7 @@ class RocketDisplayWindow(QMainWindow):
         return frame
 
     def createButtonSets(self, keys: list[tuple]) -> list[tuple]:
-        """Generate status control buttons.
+        """Generates a set of buttons compatible with layoutBox
 
         Args:
             keys(list[str]): list of button names (for dictionary hashing)
@@ -740,6 +741,8 @@ class RocketDisplayWindow(QMainWindow):
         if self.currentState + 1 >= len(LAUNCH_STATES):
             self.createConfBox("Stage Advancement", "No more stages remaining.")
             return
+
+        # Change highlight
         self.dynamicLabels[LAUNCH_STATES[self.currentState]].setStyleSheet(
             STAGE_FONT_WHITE
         )
@@ -747,6 +750,8 @@ class RocketDisplayWindow(QMainWindow):
         self.dynamicLabels[LAUNCH_STATES[self.currentState]].setStyleSheet(
             STAGE_FONT_BLUE
         )
+
+        # Change title
         self.dynamicLabels[CURR_STATE].setText(
             f"<h1>STAGE: {LAUNCH_STATES[self.currentState]}</h1>"
         )
@@ -763,6 +768,8 @@ class RocketDisplayWindow(QMainWindow):
                 "Stage Regression", "Cannot return further than first stage."
             )
             return
+        
+        # Change highlight
         self.dynamicLabels[LAUNCH_STATES[self.currentState]].setStyleSheet(
             STAGE_FONT_WHITE
         )
@@ -770,6 +777,8 @@ class RocketDisplayWindow(QMainWindow):
         self.dynamicLabels[LAUNCH_STATES[self.currentState]].setStyleSheet(
             STAGE_FONT_BLUE
         )
+
+        # Change title
         self.dynamicLabels[CURR_STATE].setText(
             f"<h1>STAGE: {LAUNCH_STATES[self.currentState]}</h1>"
         )
