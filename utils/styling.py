@@ -9,16 +9,28 @@ from PyQt6.QtGui import QColor, QPalette
 
 
 # CONSTANTS --------------------------------------------------------------------|
-PRIMARY = QColor(23, 24, 23)
-PRIMARY_H = "#171817"
-WHITE = Qt.GlobalColor.white
-DETAILING = QColor(0, 168, 145) # darker blue
-DETAILING_H = "#00A891"
-#DETAILING = QColor(48, 170, 170) # lighter blue
-SECONDARY = WHITE
+LIGHT = False
+if LIGHT:
+    PRIMARY = QColor(200, 200, 200)
+    PRIMARY_H = "#c8c8c8"
+    WHITE = Qt.GlobalColor.white
+    DETAILING = QColor(0, 0, 0)
+    DETAILING_H = "#000000"
+    SECONDARY = Qt.GlobalColor.black
+    TEXT = "black"
+    BUTTON_OFF = "gray"
+else:
+    PRIMARY = QColor(23, 24, 23)
+    PRIMARY_H = "#171817"
+    WHITE = Qt.GlobalColor.white
+    DETAILING = QColor(0, 168, 145) # darker blue
+    DETAILING_H = "#00A891"
+    #DETAILING = QColor(48, 170, 170) # lighter blue
+    SECONDARY = WHITE
+    TEXT = "white"
+    BUTTON_OFF = "white"
 
 VALVE_ON = "green"
-TEXT = "white"
 BOLD = "font-weight: bold; "
 
 GREEN = "color: green; "
@@ -28,10 +40,12 @@ RED = "color: red; "
 COLOR_CSS = f"background: {PRIMARY_H}; color: {DETAILING_H}; "
 FONT_CSS = "font-family: consolas; "
 
-PRESS_GREEN = f"{GREEN} {FONT_CSS}; {BOLD}"
-PRESS_YELLOW = f"{YELLOW} {FONT_CSS}; {BOLD}"
-PRESS_RED = f"{RED} {FONT_CSS}; {BOLD}"
-SV_CSS = f"color: {TEXT}; {FONT_CSS}"
+FONT_SIZE = lambda size: f"font-size: {size}px; "
+
+PRESS_GREEN = f"{GREEN} {FONT_CSS}; {BOLD} {FONT_SIZE(13)}"
+PRESS_YELLOW = f"{YELLOW} {FONT_CSS}; {BOLD} {FONT_SIZE(13)}"
+PRESS_RED = f"{RED} {FONT_CSS}; {BOLD} {FONT_SIZE(13)}"
+SV_CSS = f"color: {TEXT}; {FONT_CSS} {FONT_SIZE(12)}"
 
 LINE_HEIGHT = 25
 
@@ -45,6 +59,7 @@ BUTTON_STYLE = (
         border-radius: 2px;
         border-color: %s;
         font: bold 16px;
+        color: %s;
     }
     QPushButton:hover {
         color: white;
@@ -55,19 +70,21 @@ BUTTON_STYLE = (
         background-color: %s;
     }
     QPushButton:disabled{
-        color: white;
+        color: %s;
     }
     """ % (
         DETAILING_H,
         DETAILING_H,
+        PRIMARY_H,
         DETAILING_H,
-        PRIMARY_H
+        PRIMARY_H,
+        BUTTON_OFF,
     )
 )
 
-HEADER_STYLE = f"color: {TEXT}; font-family: consolas; font-size: 9px; "
-STAGE_FONT_WHITE = f"color: {TEXT}; font-family: consolas; font-size: 20px; {BOLD}"
-STAGE_FONT_BLUE = f"color: {DETAILING_H}; font-family: consolas; font-size: 20px; {BOLD}"
+HEADER_STYLE = f"color: {TEXT}; font-family: consolas; {FONT_SIZE(9)}"
+STAGE_FONT_WHITE = f"color: {TEXT}; font-family: consolas; {FONT_SIZE(20)} {BOLD}"
+STAGE_FONT_BLUE = f"color: {DETAILING_H}; font-family: consolas; {FONT_SIZE(20)} {BOLD}"
 
 DATE_TIME_FORMAT = "MM/dd/yyyy | hh:mm:ss:zzz -> "
 

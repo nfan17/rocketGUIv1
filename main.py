@@ -20,7 +20,10 @@ from utils import *
 
 MIN_SIZE = 630
 ICON_PATH = "./src/rocketIcon.png"
-WIRE_DIAGRAM = "./src/wireDiagWhite.svg"
+if LIGHT:
+    WIRE_DIAGRAM = "./src/wireDiagBlack.svg"
+else:
+    WIRE_DIAGRAM = "./src/wireDiagWhite.svg"
 
 LAUNCH_STATES = ("IDLE", "SYSTEM CHECKS", "HIGH PRESSURE", "TANK HIGH PRESSURE", "FIRE")
 LEAK_ACCEPT_RATE = "1 PSI / Min"
@@ -779,7 +782,7 @@ class RocketDisplayWindow(QMainWindow):
                     "Stage Regression", "Cannot return further than first stage."
                 )
                 return
-            
+
             # Change highlight
             self.dynamicLabels[LAUNCH_STATES[self.currentState]].setStyleSheet(
                 STAGE_FONT_WHITE
