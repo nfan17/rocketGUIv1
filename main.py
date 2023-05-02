@@ -172,7 +172,7 @@ class RocketDisplayWindow(QMainWindow):
         """Asks for selection of a baudrate.
 
         Returns:
-            bool: True setup is successful, False otherwise
+            bool: True if setup is successful, False otherwise
         """
         selection, ok = QInputDialog().getItem(
             self.centralWidget(),
@@ -623,6 +623,8 @@ class RocketDisplayWindow(QMainWindow):
             name = SV + str(i)
             self.dynamicLabels[name] = QLabel(DISP_FORMAT(name, "CLOSE"))
             self.dynamicLabels[name].setStyleSheet(SV_CSS)
+            self.dynamicLabels[name].setAlignment(Qt.AlignmentFlag.AlignCenter)
+
             self.buttons[name] = QPushButton(f"{name}")
             self.buttons[name].setStyleSheet(BUTTON_STYLE)
 
@@ -630,6 +632,7 @@ class RocketDisplayWindow(QMainWindow):
             name = PT + str(i)
             self.dynamicLabels[name] = QLabel(DISP_FORMAT(name, "N/A"))
             self.dynamicLabels[name].setStyleSheet(PRESS_GREEN)
+            self.dynamicLabels[name].setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         # boxes
         t1 = QLabel("N2 GSE")
@@ -696,7 +699,7 @@ class RocketDisplayWindow(QMainWindow):
                 (self.buttons[SV + "8"], 1, 1, 1, 1),
                 (self.dynamicLabels[SV + "9"], 2, 0, 1, 1),
                 (self.buttons[SV + "9"], 2, 1, 1, 1),
-                (self.dynamicLabels[PT + "4"], 4, 0, 1, 1),
+                (self.dynamicLabels[PT + "4"], 4, 0, 1, 2),
             ]
         )
 
