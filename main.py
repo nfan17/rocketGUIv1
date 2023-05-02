@@ -207,7 +207,7 @@ class RocketDisplayWindow(QMainWindow):
     def toggleSerial(self) -> None:
         """Toggles serial connection on/off."""
         if self.serialSet and not self.serialOn:
-            try:                    
+            try:
                 self.serial = setupConnection(self.port, self.baud)
                 self.threadingSetup(self.serial)
                 self.serialOn = True
@@ -335,7 +335,7 @@ class RocketDisplayWindow(QMainWindow):
         data = self.parseData(string)
         self.updateDisplay(data)
 
-    def sendMessage(self, command: (str | None)=None) -> None:
+    def sendMessage(self, command: (str | None) = None) -> None:
         """Sends a specific message to toggle without starting a preset.
 
         *Serial Window Core
@@ -579,7 +579,7 @@ class RocketDisplayWindow(QMainWindow):
             self.dynamicLabels[stage].setStyleSheet(STAGE_FONT_WHITE)
             labels.append((self.dynamicLabels[stage], i, 0, 1, 1))
         self.dynamicLabels[LAUNCH_STATES[0]].setStyleSheet(STAGE_FONT_BLUE)
-        return labels        
+        return labels
 
     def createSerialLayout(self) -> list:
         """Creates and returns items of the serial setup for a layoutBox."""
@@ -633,9 +633,7 @@ class RocketDisplayWindow(QMainWindow):
 
         # boxes
         t1 = QLabel("N2 GSE")
-        t1.setStyleSheet(
-            f"{FONT_CSS} color: {DETAILING_H}; {BOLD}"
-        )
+        t1.setStyleSheet(f"{FONT_CSS} color: {DETAILING_H}; {BOLD}")
         t1.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         box1 = self.createLayoutBox(
@@ -649,9 +647,7 @@ class RocketDisplayWindow(QMainWindow):
         )
 
         t2 = QLabel("High Press")
-        t2.setStyleSheet(
-            f"{FONT_CSS} color: {DETAILING_H}; font-size: 11px; {BOLD}"
-        )
+        t2.setStyleSheet(f"{FONT_CSS} color: {DETAILING_H}; font-size: 11px; {BOLD}")
         t2.setAlignment(Qt.AlignmentFlag.AlignCenter)
         box2 = self.createLayoutBox(
             [
@@ -677,9 +673,7 @@ class RocketDisplayWindow(QMainWindow):
         )
 
         t4 = QLabel("Fuel")
-        t4.setStyleSheet(
-            f"{FONT_CSS} color: {DETAILING_H}; {BOLD};"
-        )
+        t4.setStyleSheet(f"{FONT_CSS} color: {DETAILING_H}; {BOLD};")
         t4.setAlignment(Qt.AlignmentFlag.AlignCenter)
         box4 = self.createLayoutBox(
             [
@@ -693,9 +687,7 @@ class RocketDisplayWindow(QMainWindow):
         )
 
         t5 = QLabel("Main Valve")
-        t5.setStyleSheet(
-            f"{FONT_CSS} color: {DETAILING_H}; {BOLD}"
-        )
+        t5.setStyleSheet(f"{FONT_CSS} color: {DETAILING_H}; {BOLD}")
         t5.setAlignment(Qt.AlignmentFlag.AlignCenter)
         box5 = self.createLayoutBox(
             [
@@ -745,13 +737,17 @@ class RocketDisplayWindow(QMainWindow):
         if self.currentState + 1 >= len(LAUNCH_STATES):
             self.createConfBox("Stage Advancement", "No more stages remaining.")
             return
-        self.dynamicLabels[LAUNCH_STATES[self.currentState]].setStyleSheet(STAGE_FONT_WHITE)
+        self.dynamicLabels[LAUNCH_STATES[self.currentState]].setStyleSheet(
+            STAGE_FONT_WHITE
+        )
         self.currentState += 1
-        self.dynamicLabels[LAUNCH_STATES[self.currentState]].setStyleSheet(STAGE_FONT_BLUE)
+        self.dynamicLabels[LAUNCH_STATES[self.currentState]].setStyleSheet(
+            STAGE_FONT_BLUE
+        )
         self.dynamicLabels[CURR_STATE].setText(
             f"<h1>STAGE: {LAUNCH_STATES[self.currentState]}</h1>"
         )
-        
+
     def previousStage(self) -> None:
         """Confirms to return to last stage."""
         if not self.aborted:
@@ -760,11 +756,17 @@ class RocketDisplayWindow(QMainWindow):
             ):
                 return
         if self.currentState - 1 < 0:
-            self.createConfBox("Stage Regression", "Cannot return further than first stage.")
+            self.createConfBox(
+                "Stage Regression", "Cannot return further than first stage."
+            )
             return
-        self.dynamicLabels[LAUNCH_STATES[self.currentState]].setStyleSheet(STAGE_FONT_WHITE)
+        self.dynamicLabels[LAUNCH_STATES[self.currentState]].setStyleSheet(
+            STAGE_FONT_WHITE
+        )
         self.currentState -= 1
-        self.dynamicLabels[LAUNCH_STATES[self.currentState]].setStyleSheet(STAGE_FONT_BLUE)
+        self.dynamicLabels[LAUNCH_STATES[self.currentState]].setStyleSheet(
+            STAGE_FONT_BLUE
+        )
         self.dynamicLabels[CURR_STATE].setText(
             f"<h1>STAGE: {LAUNCH_STATES[self.currentState]}</h1>"
         )
@@ -826,16 +828,17 @@ class RocketDisplayWindow(QMainWindow):
         self.buttons[SETUP_SER].clicked.connect(self.setupSerial)
         self.buttons[SERIAL_SEND].clicked.connect(self.sendMessage)
 
-        self.buttons[SV + "1"].clicked.connect(lambda: self.sendMessage("1"))
-        self.buttons[SV + "2"].clicked.connect(lambda: self.sendMessage("2"))
-        self.buttons[SV + "3"].clicked.connect(lambda: self.sendMessage("3"))
-        self.buttons[SV + "4"].clicked.connect(lambda: self.sendMessage("4"))
-        self.buttons[SV + "5"].clicked.connect(lambda: self.sendMessage("5"))
-        self.buttons[SV + "6"].clicked.connect(lambda: self.sendMessage("6"))
-        self.buttons[SV + "7"].clicked.connect(lambda: self.sendMessage("7"))
-        self.buttons[SV + "8"].clicked.connect(lambda: self.sendMessage("8"))
-        self.buttons[SV + "9"].clicked.connect(lambda: self.sendMessage("9"))
-        
+        # create individual SV button initializer functions
+        svButtons = [
+            lambda num=str(i): self.buttons[SV + num].clicked.connect(
+                lambda: self.sendMessage(num)
+            )
+            for i in range(1, 10)
+        ]
+
+        # initialize buttons
+        for func in svButtons:
+            func()
 
     def countDown(self) -> None:
         """Starts countdown"""
