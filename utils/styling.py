@@ -19,11 +19,19 @@ SECONDARY = WHITE
 
 VALVE_ON = "green"
 TEXT = "white"
-PRESS = "red"
 BOLD = "font-weight: bold; "
+
+GREEN = "color: green; "
+YELLOW = "color: yellow; "
+RED = "color: red; "
 
 COLOR_CSS = f"background: {PRIMARY_H}; color: {DETAILING_H}; "
 FONT_CSS = "font-family: consolas; "
+
+PRESS_GREEN = f"{GREEN} {FONT_CSS}; {BOLD}"
+PRESS_YELLOW = f"{YELLOW} {FONT_CSS}; {BOLD}"
+PRESS_RED = f"{RED} {FONT_CSS}; {BOLD}"
+SV_CSS = f"color: {TEXT}; {FONT_CSS}"
 
 LINE_HEIGHT = 25
 

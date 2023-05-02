@@ -53,6 +53,10 @@ PRESSURE_SEP = ", "
 VALVE_TAG = "Toggle PIN"
 VALVE_SEP = " "
 
+# Tank Pressure Ranges
+SAFE_PRESS = range(-1000, 401)
+MID_PRESS = range(401, 501)
+
 # Files
 DATE = QDateTime.currentDateTime().toString("MM-dd-yy")
 START_TIME = QDateTime.currentDateTime().toString("MM-dd-yy-hh-mm")
@@ -527,7 +531,17 @@ class RocketDisplayWindow(QMainWindow):
                         )
                         self.dynamicLabels[dest].setText(DISP_FORMAT(dest, "CLOSE"))
                 elif PT in dest:
+                    try:
+                        reading = int(value.strip())
+                    except ValueError:
+                        return
                     self.dynamicLabels[dest].setText(DISP_FORMAT(dest, value.strip()))
+                    if reading in SAFE_PRESS:
+                        self.dynamicLabels[dest].setStyleSheet(PRESS_GREEN)
+                    elif reading in MID_PRESS:
+                        self.dynamicLabels[dest].setStyleSheet(PRESS_YELLOW)
+                    else:
+                        self.dynamicLabels[dest].setStyleSheet(PRESS_RED)
             except KeyError:
                 continue
 
@@ -837,14 +851,14 @@ class RocketDisplayWindow(QMainWindow):
         for i in range(1, 10):
             name = SV + str(i)
             self.dynamicLabels[name] = QLabel(DISP_FORMAT(name, "CLOSE"))
-            self.dynamicLabels[name].setStyleSheet(f"color: {TEXT}; {FONT_CSS}")
+            self.dynamicLabels[name].setStyleSheet(SV_CSS)
             self.buttons[name] = QPushButton(f"{name}")
             self.buttons[name].setStyleSheet(BUTTON_STYLE)
 
         for i in range(1, 5):
             name = PT + str(i)
-            self.dynamicLabels[name] = QLabel(DISP_FORMAT(name, "n/a"))
-            self.dynamicLabels[name].setStyleSheet(f"color: {PRESS}; {FONT_CSS}; {BOLD}")
+            self.dynamicLabels[name] = QLabel(DISP_FORMAT(name, "N/A"))
+            self.dynamicLabels[name].setStyleSheet(PRESS_GREEN)
 
         # boxes
         t1 = QLabel("N2 GSE")
@@ -865,7 +879,7 @@ class RocketDisplayWindow(QMainWindow):
 
         t2 = QLabel("High Press")
         t2.setStyleSheet(
-            f"{FONT_CSS} color: {DETAILING_H}; {BOLD}"
+            f"{FONT_CSS} color: {DETAILING_H}; font-size: 11px; {BOLD}"
         )
         t2.setAlignment(Qt.AlignmentFlag.AlignCenter)
         box2 = self.createLayoutBox(
@@ -909,27 +923,27 @@ class RocketDisplayWindow(QMainWindow):
 
         t5 = QLabel("Main Valve")
         t5.setStyleSheet(
-            f"{FONT_CSS} font-size: 11px; color: {DETAILING_H}; {BOLD}"
+            f"{FONT_CSS} color: {DETAILING_H}; {BOLD}"
         )
         t5.setAlignment(Qt.AlignmentFlag.AlignCenter)
         box5 = self.createLayoutBox(
             [
-                (t5, 0, 0, 1, 1),
+                (t5, 0, 0, 1, 2),
                 (self.dynamicLabels[SV + "8"], 1, 0, 1, 1),
-                (self.buttons[SV + "8"], 2, 0, 1, 1),
-                (self.dynamicLabels[SV + "9"], 3, 0, 1, 1),
-                (self.buttons[SV + "9"], 4, 0, 1, 1),
-                (self.dynamicLabels[PT + "4"], 5, 0, 1, 1),
+                (self.buttons[SV + "8"], 1, 1, 1, 1),
+                (self.dynamicLabels[SV + "9"], 2, 0, 1, 1),
+                (self.buttons[SV + "9"], 2, 1, 1, 1),
+                (self.dynamicLabels[PT + "4"], 4, 0, 1, 1),
             ]
         )
 
         # layout
-        labelLayout.addWidget(imageLabel, 0, 2, 13, 6)
-        labelLayout.addWidget(box1, 1, 0, 3, 1)
-        labelLayout.addWidget(box2, 1, 6, 3, 1)
-        labelLayout.addWidget(box3, 6, 0, 4, 1)
-        labelLayout.addWidget(box4, 5, 7, 4, 1)
-        labelLayout.addWidget(box5, 10, 6, 3, 1)
+        labelLayout.addWidget(imageLabel, 0, 4, 13, 12)
+        labelLayout.addWidget(box1, 1, 0, 3, 2)
+        labelLayout.addWidget(box2, 0, 11, 3, 3)
+        labelLayout.addWidget(box3, 6, 0, 4, 2)
+        labelLayout.addWidget(box4, 5, 14, 4, 2)
+        labelLayout.addWidget(box5, 10, 11, 4, 4)
 
         return frame
 
