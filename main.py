@@ -18,6 +18,8 @@ from PyQt6.QtWidgets import (QApplication, QFrame, QGridLayout, QInputDialog,
 
 from utils import *
 
+# CONSTANTS -----------------------------------------------------------------|
+
 MIN_SIZE = 630
 ICON_PATH = "./src/rocketIcon.png"
 if LIGHT:
@@ -68,7 +70,7 @@ DATA_LOG_FILE = f"./log/data/{DATE}.txt"
 SYS_LOG_FILE = f"./log/sys/{DATE}.txt"
 
 
-# MAIN WINDOW -------------------------------------------------------------------------------------|
+# MAIN WINDOW ---------------------------------------------------------------|
 
 
 class RocketDisplayWindow(QMainWindow):
@@ -113,7 +115,7 @@ class RocketDisplayWindow(QMainWindow):
         with open(DATA_LOG_FILE, "a") as datalog:
             datalog.write(start + "\n")
 
-    # SERIAL FUNCTIONS
+    # SERIAL FUNCTIONS ----------------------------------------------
 
     def threadingSetup(self, serial: SerialComm) -> None:
         """Sets up threading, serial worker and signals/slots.
@@ -386,6 +388,8 @@ class RocketDisplayWindow(QMainWindow):
             str: the formatted string
         """
         return QDateTime.currentDateTime().toString(DATE_TIME_FORMAT) + string.strip()
+
+    # WINDOW ELEMENTS -----------------------------------------------
 
     def createLabelBox(
         self,
@@ -857,10 +861,8 @@ class RocketDisplayWindow(QMainWindow):
 
         if self.locked:
             self.buttons[LOCK].setText("Unlock")
-            #self.buttons[LOCK].setStyleSheet(BUTTON_STYLE + )
         else:
             self.buttons[LOCK].setText("Lock")
-            #self.buttons[LOCK].setStyleSheet(BUTTON_STYLE)
 
     def linkButtons(self) -> None:
         """Link buttons to functionality."""
