@@ -9,6 +9,7 @@ Description: Liquid Rocket Project Launch Control GUI prototype.
 import re
 import sys
 
+from pyqtgraph import PlotWidget, mkPen
 from PyQt6.QtCore import QDateTime, Qt, QThread, QTimer, pyqtSlot
 from PyQt6.QtGui import QIcon
 from PyQt6.QtSvgWidgets import QSvgWidget
@@ -69,12 +70,23 @@ START_TIME = QDateTime.currentDateTime().toString("MM-dd-yy-hh-mm")
 DATA_LOG_FILE = f"./log/data/{DATE}.txt"
 SYS_LOG_FILE = f"./log/sys/{DATE}.txt"
 
+# Graphs
+WIDGET = "widget"
+GRAPH = "graph"
+TIME = "time"
+DATA = "data"
+TIMESTAMP = "tstamp"
+
+FUEL_GRAPH = "Fuel: Pressure vs Time"
+OX_GRAPH = "Ox: Pressure vs Time"
+
 
 # MAIN WINDOW ---------------------------------------------------------------|
 
 
 class RocketDisplayWindow(QMainWindow):
     """Main Rocket Control Window."""
+    graphData = pyqtSignal(str, int)
 
     def __init__(self) -> None:
         """Constructs new Rocket Display Window."""
@@ -94,6 +106,11 @@ class RocketDisplayWindow(QMainWindow):
 
         self.buttons = {}
         self.dynamicLabels = {}
+
+        # plots
+        self.plots = {}
+        self.pen = mkPen(color=DETAILING, width=3)
+        self.graphData.connect(self.updatePlot)
 
         # layout
         self.generalLayout = self.createMainGrid()
@@ -322,13 +339,21 @@ class RocketDisplayWindow(QMainWindow):
                         reading = int(value.strip())
                     except ValueError:
                         return
-                    self.dynamicLabels[dest].setText(DISP_FORMAT(dest, value.strip()))
+
+                    # numerical readings
+                    self.dynamicLabels[dest].setText(DISP_FORMAT(dest, reading))
                     if reading in SAFE_PRESS:
                         self.dynamicLabels[dest].setStyleSheet(PRESS_GREEN)
                     elif reading in MID_PRESS:
                         self.dynamicLabels[dest].setStyleSheet(PRESS_YELLOW)
                     else:
                         self.dynamicLabels[dest].setStyleSheet(PRESS_RED)
+
+                    # graphs
+                    if dest == PT + "2":  # Ox line
+                        self.graphData.emit(OX_GRAPH, reading)
+                    elif dest == PT + "3":  # Fuel line
+                        self.graphData.emit(FUEL_GRAPH, reading)
             except KeyError:
                 continue
 
@@ -570,7 +595,7 @@ class RocketDisplayWindow(QMainWindow):
         grid.addWidget(self.createWireDiagram(), 1, 3, 13, 6)
 
         # right column
-        grid.addWidget(self.createLabelBox(), 1, 9, 10, 3)
+        grid.addWidget(self.createLayoutBox(self.createGraphWidgets()), 1, 9, 10, 3)
         grid.addWidget(
             self.createLayoutBox(
                 self.createButtonSets([(SETUP_SER, 0, 0, 1, 1), (SER_ON, 0, 1, 1, 1)])
@@ -730,6 +755,71 @@ class RocketDisplayWindow(QMainWindow):
 
         return frame
 
+    def createPlot(self) -> dict:
+        """Creates a graph.
+
+        Returns:
+            tuple: the widget, graph, time set, data set
+        """
+        widget = PlotWidget()
+
+        time = [0] * 20  # time points
+        data = [0] * 20  # data points
+
+        widget.setBackground(f"{PRIMARY_H}")
+        widget.setYRange(-10, 1000)
+        widget.setMouseEnabled(x=False, y=False)
+        widget.hideButtons()
+        graph = widget.plot(time, data, pen=self.pen)
+
+        graphItems = {WIDGET: widget, GRAPH: graph, TIME: time, DATA: data, TIMESTAMP: 0}
+
+        return graphItems
+
+    def createGraphWidgets(self) -> list[tuple]:
+        """Creates graph widgets for layoutBox.
+        
+        Returns:
+            list[tuple]: list of plots in (widget, x, y, l, h)
+        """
+        fuelLabel = QLabel(FUEL_GRAPH)
+        fuelLabel.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        fuelLabel.setStyleSheet(STAGE_FONT_BLUE)
+        self.plots[FUEL_GRAPH] = self.createPlot()
+
+        oxLabel = QLabel(OX_GRAPH)
+        oxLabel.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        oxLabel.setStyleSheet(STAGE_FONT_BLUE)
+        self.plots[OX_GRAPH] = self.createPlot()
+
+        return [
+            (fuelLabel, 0, 0, 1, 1),
+            (self.plots[FUEL_GRAPH][WIDGET], 1, 0, 1, 1),
+            (oxLabel, 2, 0, 1, 1),
+            (self.plots[OX_GRAPH][WIDGET], 3, 0, 1, 1)
+        ]
+
+    @pyqtSlot(str, int)
+    def updatePlot(self, plotName: str, data: int) -> None:
+        """Updates a plot."""
+
+        plot = self.plots[plotName]
+
+        # time
+        plot[TIMESTAMP] += int(time.time()) % 10 / 100
+        plot[TIME] = plot[TIME][1:]
+        plot[TIME].append(plot[TIMESTAMP])
+
+        # data
+        try:
+            plot[DATA] = plot[DATA][1:]
+            plot[DATA].append(data)
+        except ValueError:
+            pass
+
+        # Update the data.
+        plot[GRAPH].setData(plot[TIME], plot[DATA])
+
     def createButtonSets(self, keys: list[tuple]) -> list[tuple]:
         """Generates a set of buttons compatible with layoutBox
 
@@ -883,7 +973,7 @@ class RocketDisplayWindow(QMainWindow):
             for i in range(1, 10)
         ]
 
-        # initialize buttons
+        # call initializer functions to create buttons
         for func in svButtons:
             func()
 
